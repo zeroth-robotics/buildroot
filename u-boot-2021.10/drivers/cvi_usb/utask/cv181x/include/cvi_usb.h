@@ -4,7 +4,7 @@
 #include <linux/types.h>
 #define BCD_USB_SS                      0x0300  // 3.00 version USB
 #define ID_VENDOR                       0x3346  // Cvitek
-#define ID_PRODUCT                      0x1001  // example bulk product
+#define ID_PRODUCT                      0x1000  // example bulk product
 #define BCD_DEVICE_SS                   0x0001  // 0.1
 #define BCD_USB_HS_ONLY                 0x0201  // 2.01  /*Only HS with BOS descriptor*/
 #define BCD_USB_HS                      0x0210  // 2.10
