@@ -6,7 +6,7 @@ config BR2_PACKAGE_CVI_PINMUX
 if BR2_PACKAGE_CVI_PINMUX
 
 choice
-	prompt "CV180X or SG200X"
+	prompt "Cvi pin multiplexing"
 	default BR2_PACKAGE_CVI_PINMUX_CV180X
 
 config BR2_PACKAGE_CVI_PINMUX_CV180X
