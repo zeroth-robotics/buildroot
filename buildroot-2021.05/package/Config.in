@@ -1,6 +1,7 @@
 menu "Target packages"
 
 	source "package/busybox/Config.in"
+	source "package/cvi-pinmux/Config.in"
 	source "package/duo-pinmux/Config.in"
 	source "package/skeleton/Config.in"
 	source "package/skeleton-custom/Config.in"
