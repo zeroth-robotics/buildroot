@@ -65,14 +65,18 @@ cd duo-buildroot-sdk/
 会看到编译脚本的使用方法提示：
 ```bash
 # ./build.sh
-Usage:
 ./build.sh              - Show this menu
 ./build.sh lunch        - Select a board to build
-./build.sh [board]      - Build [board] directly, supported boards asfollows:
+./build.sh [board]      - Build [board] directly, supported boards as follows:
 milkv-duo
 milkv-duo-spinand
 milkv-duo-spinor
 milkv-duo256m
+milkv-duo256m-spinand
+milkv-duo256m-spinor
+milkv-duos-emmc
+milkv-duos-sd
+
 ```
 最下边列出的是当前支持的目标版本列表。带 `spinor` 或者 `spinand` 后缀的为基于 IOB 板载 NOR FLASH 或者 NAND FLASH 的版本。
 
@@ -86,6 +90,11 @@ Select a target to build:
 2. milkv-duo-spinand
 3. milkv-duo-spinor
 4. milkv-duo256m
+5. milkv-duo256m-spinand
+6. milkv-duo256m-spinor
+7. milkv-duos-emmc
+8. milkv-duos-sd
+
 Which would you like:
 ```
 
@@ -112,6 +121,8 @@ milkv-duo               cv1800b_milkv_duo_sd
 milkv-duo-spinand       cv1800b_milkv_duo_spinand
 milkv-duo-spinor        cv1800b_milkv_duo_spinor
 milkv-duo256m           cv1812cp_milkv_duo256m_sd
+milkv-duo256m-spinand   cv1812cp_milkv_duo256m_spinand
+milkv-duo256m-spinor    cv1812cp_milkv_duo256m_spinor
 ```
 
 ```bash
@@ -137,10 +148,12 @@ pack_sd_image
 
 生成的固件位置：
 ```
-Duo:      	install/soc_cv1800b_milkv_duo_sd/[board].img
-Duo(nor): 	install/soc_cv1800b_milkv_duo_sd/fip.bin、boot.spinor、rootfs.spinor
-Duo(nand):	install/soc_cv1800b_milkv_duo_sd/fip.bin、boot.spinand、rootfs.spinand、system.spinand、cfg.spinand
-Duo256M:  	install/soc_cv1812cp_milkv_duo256m_sd/[board].img
+Duo:      		install/soc_cv1800b_milkv_duo_sd/[board].img
+Duo(nor): 		install/soc_cv1800b_milkv_duo_sd/fip.bin、boot.spinor、rootfs.spinor
+Duo(nand):		install/soc_cv1800b_milkv_duo_sd/fip.bin、boot.spinand、rootfs.spinand、system.spinand、cfg.spinand
+Duo256M:  		install/soc_cv1812cp_milkv_duo256m_sd/[board].img
+Duo256M(nor): 		install/soc_cv1800b_milkv_duo_sd/fip.bin、boot.spinor、rootfs.spinor
+Duo256M(nand):		install/soc_cv1800b_milkv_duo_sd/fip.bin、boot.spinand、rootfs.spinand、system.spinand、cfg.spinand
 ```
 
 ## 二、使用 Docker 编译
@@ -192,6 +205,10 @@ milkv-duo
 milkv-duo-spinand
 milkv-duo-spinor
 milkv-duo256m
+milkv-duo256m-spinand
+milkv-duo256m-spinor
+milkv-duos-emmc
+milkv-duos-sd
 ```
 
 命令中部分参数说明:
@@ -234,6 +251,8 @@ milkv-duo               cv1800b_milkv_duo_sd
 milkv-duo-spinand       cv1800b_milkv_duo_spinand
 milkv-duo-spinor        cv1800b_milkv_duo_spinor
 milkv-duo256m           cv1812cp_milkv_duo256m_sd
+milkv-duo256m-spinand   cv1812cp_milkv_duo256m_spinand
+milkv-duo256m-spinor    cv1812cp_milkv_duo256m_spinor
 ```
 
 ```bash
@@ -259,10 +278,12 @@ pack_sd_image
 
 生成的固件位置：
 ```
-Duo:      	install/soc_cv1800b_milkv_duo_sd/[board].img
-Duo(nor): 	install/soc_cv1800b_milkv_duo_sd/fip.bin、boot.spinor、rootfs.spinor
-Duo(nand):	install/soc_cv1800b_milkv_duo_sd/fip.bin、boot.spinand、rootfs.spinand、system.spinand、cfg.spinand
-Duo256M:  	install/soc_cv1812cp_milkv_duo256m_sd/[board].img
+Duo:      		install/soc_cv1800b_milkv_duo_sd/[board].img
+Duo(nor): 		install/soc_cv1800b_milkv_duo_sd/fip.bin、boot.spinor、rootfs.spinor
+Duo(nand):		install/soc_cv1800b_milkv_duo_sd/fip.bin、boot.spinand、rootfs.spinand、system.spinand、cfg.spinand
+Duo256M:  		install/soc_cv1812cp_milkv_duo256m_sd/[board].img
+Duo256M(nor): 		install/soc_cv1800b_milkv_duo_sd/fip.bin、boot.spinor、rootfs.spinor
+Duo256M(nand):		install/soc_cv1800b_milkv_duo_sd/fip.bin、boot.spinand、rootfs.spinand、system.spinand、cfg.spinand
 ```
 
 编译完成后可以用 `exit` 命令退出 Docker 环境：
