@@ -1,4 +1,29 @@
 config BR2_PACKAGE_DUO_PINMUX
-    bool "Duo pinmux"
-    help
-      Pinmux for Milk-V Duo
+	bool "Duo pinmux"
+	help
+	  Milk-V Duo Pin Multiplexing.
+
+if BR2_PACKAGE_DUO_PINMUX
+
+choice
+	prompt "Duo pin multiplexing"
+	default BR2_PACKAGE_DUO_PINMUX_DUO
+
+config BR2_PACKAGE_DUO_PINMUX_DUO
+	bool "Duo"
+	help
+	  pinmux for duo.
+
+config BR2_PACKAGE_DUO_PINMUX_DUO256M
+	bool "Duo256M"
+	help
+	  pinmux for duo256m.
+
+config BR2_PACKAGE_DUO_PINMUX_DUOS
+	bool "Duo256M"
+	help
+	  pinmux for duo256m.
+
+endchoice
+
+endif
