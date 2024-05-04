@@ -71,6 +71,25 @@ CONFIG_SENSOR_TUNING_PARAM="gcore_gc4653"
 # end of Sensor settings
 
 #
+# Panel settings
+#
+CONFIG_MIPI_PANEL_HX8394=y
+# CONFIG_MIPI_PANEL_ILI9881C is not set
+# CONFIG_MIPI_PANEL_ILI9881D is not set
+# CONFIG_MIPI_PANEL_JD9366AB is not set
+# CONFIG_MIPI_PANEL_NT35521 is not set
+# CONFIG_MIPI_PANEL_OTA7290B is not set
+# CONFIG_MIPI_PANEL_OTA7290B_1920 is not set
+# CONFIG_MIPI_PANEL_ICN9707 is not set
+# CONFIG_MIPI_PANEL_3AML069LP01G is not set
+# CONFIG_MIPI_PANEL_ST7701 is not set
+# CONFIG_MIPI_PANEL_ST7785M is not set
+# CONFIG_LVDS_PANEL_EK79202 is not set
+# CONFIG_I80_PANEL_ST7789V is not set
+# CONFIG_I80_PANEL_ST7789V3 is not set
+# end of Panel settings
+
+#
 # uboot options
 #
 CONFIG_USE_DEFAULT_ENV=y
