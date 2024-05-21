@@ -2,15 +2,27 @@
 
 # 概要
 
-Milk-V DuoはCV1800Bをベースにした超小型の組み込みプラットフォームです。LinuxとRTOSが実行可能で、プロフェッショナル、産業用ODM、AIoT、DIY、クリエイターに、高信頼で高費用対効果なプラットフォームを提供します。
+Milk-V 
+DuoはCV1800Bをベースにした超小型の組み込みプラットフォームです。LinuxとRTOSが実行可能で、プロフェッショナル、産業用ODM、AIoT、DIY、クリエイターに、高信頼で高費用対効果なプラットフォームを提供します。
 
 ## ハードウェア
-
-- CPU: CVITEK CV1800B (C906@1Ghz + C906@700MHz)
+### Milk-V Duo 64M
+- CPU: CVITEK CV1800B (C906@1GHz + C906@700MHz)
 - デュアルコアRV64 最大1GHz
 - 64MB RAM
 - アドオンボード経由での10/100Mbpsイーサネット
 
+### Milk-V Duo 256M
+- CPU: SOPHGO SG2002 (C906@1GHz + C906@700MHz + ARM Cortex-A53@1GHz)
+- 256MB RAM
+- GPIO経由でのオーディオ出力
+- 1TOPSのNPU
+
+### Milk-V Duo S
+- CPU: SOPHGO SG2000 (C906@1GHz + C906@700MHz + ARM Cortex-A53@1GHz)
+- 256MB RAM
+- GPIO経由でのオーディオ出力
+- 2系統のMIPI CSI
 # SDKのディレクトリ構造
 
 ```
@@ -32,8 +44,9 @@ Milk-V DuoはCV1800Bをベースにした超小型の組み込みプラットフ
 
 # クイックスタート
 
-> [!TIP]
-> For the compilation and use methods of the SDK, you can also go to our [official documentation](https://milkv.io/docs/duo/getting-started/buildroot-sdk) for better information and eading experience. In addition, our official documentation website is also open source. If you are interested in enriching the content of the documentation or translating it into other languages, you can go to [this repository](https://github.com/milk-v/milkv.io/) submit your PR, and we will give out exquisite gifts to contributors from time to time.
+> [ヒント]
+> 
+このSDKのコンパイル方法や使用法については、[公式ドキュメント](https://milkv.io/docs/duo/getting-started/buildroot-sdk)も参照してください。また、私達の公式ドキュメントのサイトはオープンソースです。もし内容の充実や多言語への翻訳に興味があるなら、ぜひ[このリポジトリ](https://github.com/milk-v/milkv.io/)にPRを飛ばしてください。
 
 コンパイル環境を準備する前に、ローカルのubuntuを使用する際にサポートされているのは`「Ubuntu Jammy 22.04.x amd64」`のみです。
 
@@ -48,7 +61,8 @@ Milk-V DuoはCV1800Bをベースにした超小型の組み込みプラットフ
 コンパイルに必要なパッケージをインストールします。
 
 ```bash
-sudo apt install -y pkg-config build-essential ninja-build automake autoconf libtool wget curl git gcc libssl-dev bc slib squashfs-tools android-sdk-libsparse-utils jq python3-distutils scons parallel tree python3-dev python3-pip device-tree-compiler ssh cpio fakeroot libncurses5 flex bison libncurses5-dev genext2fs rsync unzip dosfstools mtools tcl openssh-client cmake expect
+sudo apt install -y pkg-config build-essential ninja-build automake autoconf libtool wget curl git gcc libssl-dev bc slib squashfs-tools android-sdk-libsparse-utils jq python3-distutils scons 
+parallel tree python3-dev python3-pip device-tree-compiler ssh cpio fakeroot libncurses5 flex bison libncurses5-dev genext2fs rsync unzip dosfstools mtools tcl openssh-client cmake expect
 ```
 
 ### SDKのソースコードを入手
@@ -59,12 +73,12 @@ git clone https://github.com/milkv-duo/duo-buildroot-sdk.git --depth=1
 
 ### <1>. 自動コンパイル
 
-Execute one-click compilation script `build.sh`：
+自動コンパイルスクリプト`build.sh`を実行:
 ```bash
 cd duo-buildroot-sdk/
 ./build.sh
 ```
-You will see tips on how to use the compiled script:
+コンパイルスクリプトの用法を見ることができます。
 ```bash
 # ./build.sh
 Usage:
@@ -74,11 +88,11 @@ Usage:
 milkv-duo
 milkv-duo256m
 ```
-Listed at the bottom is the list of currently supported target versions.
+下に表示されるのは現在サポートされているターゲットです。
 
-As shown in the prompt, there are two ways to compile the target version.
+プロンプトにあるように、ターゲット向けにコンパイルするには2つ方法があります。
 
-The first method is to execute `./build.sh lunch` to bring up the interactive menu, select the version number to be compiled, and press Enter:
+1つ目の方法は、`build.sh lunch`でインタラクティブメニューを立ち上げて、ターゲットのバージョンの番号を選択し、Enterを押すだけです。
 ```bash
 # ./build.sh lunch
 Select a target to build:
@@ -87,7 +101,7 @@ Select a target to build:
 Which would you like:
 ```
 
-The second method is to put the name of the target version after the script and compile it directly. For example, if you need to compile the image of `milkv-duo`, the command is as follows:
+２つ目の方法はスクリプトの引数に直にターゲットのバージョンを渡す方法です。例えば、`milkv-duo`向けにコンパイルするにはこうします。
 ```bash
 # ./build.sh milkv-duo
 ```
@@ -98,13 +112,14 @@ The second method is to put the name of the target version after the script and 
 
 ### <2>. 手動コンパイル
 
-If you have not executed the one-click compilation script, you need to manually download the toolchain [host-tools](https://sophon-file.sophon.cn/sophon-prod-s3/drive/23/03/07/16/host-tools.tar.gz) and extract it to the SDK root directory:
-
+もし自動コンパイルスクリプトを実行していない場合、ツールチェーンを手動でダウンロードする必要があります。
+[host-tools](https://sophon-file.sophon.cn/sophon-prod-s3/drive/23/03/07/16/host-tools.tar.gz)をダウンロードして、SDKのディレクトリに展開してください。
 ```bash
 tar -xf host-tools.tar.gz -C /your/sdk/path/
 ```
 
-Then enter the following commands in sequence to complete the step-by-step compilation. Replace `[board]` and `[config]` in the command with the version that needs to be compiled. The currently supported `board` and corresponding `config` are as follows:
+手動コンパイルするには以下のコマンドを順を追って実行してください。コマンド中の`[board]`と`[config]`はターゲットとするハードウェアに置き換えてください。
+現在サポートされている`[board]`と`[config]`は以下のとおりです。
 ```
 milkv-duo               cv1800b_milkv_duo_sd
 milkv-duo256m           cv1812cp_milkv_duo256m_sd
@@ -120,7 +135,7 @@ build_all
 pack_sd_image
 ```
 
-For example, if you need to compile the image of `milkv-duo`, the step-by-step compilation command is as follows:
+たとえば、`milkv-duo`向けにイメージをコンパイルするコマンドは以下のとおりですs。
 ```bash
 source device/milkv-duo/boardconfig.sh
 
@@ -131,7 +146,7 @@ build_all
 pack_sd_image
 ```
 
-Generated firmware location:
+生成されたファームウェアの場所:
 ```
 Duo:      install/soc_cv1800b_milkv_duo_sd/[board].img
 Duo256M:  install/soc_cv1812cp_milkv_duo256m_sd/[board].img
@@ -179,8 +194,8 @@ CONTAINER ID   IMAGE                        COMMAND       CREATED       STATUS  
 ```bash
 docker exec -it duodocker /bin/bash -c "cd /home/work && cat /etc/issue && ./build.sh [board]"
 ```
+`./build.sh [board]`のコマンドの終端についてはUbuntu 20.04での自動コンパイルスクリプトでの使い方と同じです。`./build.sh`で使い方が表示され、`./build.sh lunch`で選択画面を表示できます。`./build.sh [board]`で直接ターゲット向けにコンパイルできます。`[board]`の部分は以下に置き換えられます。ターゲットに合わせてください。
 
-Note that the `./build.sh [board]` at the end of the command is the same as the previous usage in the one-click compilation instructions in Ubuntu 22.04. Use `./build.sh` can see how to use the command, use `./ build.sh lunch` can bring up the interactive selection menu, use `./build.sh [board]` to directly compile the target version, `[board]` can be replaced with:
 ```
 milkv-duo
 milkv-duo256m
@@ -193,7 +208,7 @@ milkv-duo256m
 - `cat /etc/issue` Dockerで実行されているイメージのバージョンを表示します。これはいまのところ「Ubuntu 22.04.3 LTS」で、デバッグに使われます。
 - `./build.sh [board]` 自動コンパイルスクリプトを実行します。
 
-For example, if you need to compile the image of `milkv-duo`, the command is as follows:
+たとえば、`milkv-duo`向けにコンパイルする場合には以下のようにします。
 ```bash
 docker exec -it duodocker /bin/bash -c "cd /home/work && cat /etc/issue && ./build.sh milkv-duo"
 ```
@@ -202,8 +217,7 @@ docker exec -it duodocker /bin/bash -c "cd /home/work && cat /etc/issue && ./bui
 
 ### <2>. Dockerを使用して手動コンパイル
 
-If you have not executed the one-click compilation script, you need to manually download the toolchain [host-tools](https://sophon-file.sophon.cn/sophon-prod-s3/drive/23/03/07/16/host-tools.tar.gz) and extract it to the SDK root directory:
-
+もし自動コンパイルスクリプトを実行していない場合、手動でツールチェイン[host-tools](https://sophon-file.sophon.cn/sophon-prod-s3/drive/23/03/07/16/host-tools.tar.gz)をダウンロードする必要があります。そしてそれをSDKのディレクトリに展開してください。
 ```bash
 tar -xf host-tools.tar.gz -C /your/sdk/path/
 ```
@@ -220,7 +234,8 @@ Dockerに紐付けられたコードディレクトリに入る：
 root@8edea33c2239:/# cd /home/work/
 ```
 
-Then enter the following commands in sequence to complete the step-by-step compilation. Replace `[board]` and `[config]` in the command with the version that needs to be compiled. The currently supported `board` and corresponding `config` are as follows:
+そして、手動コンパイルを実行するためのコマンドを実行していきます。コマンド中の`[board]`と`[config]`はコンパイルするターゲットに合わせてください。
+今のところサポートされている`board`と対応する`config`は以下のとおりです:
 ```
 milkv-duo               cv1800b_milkv_duo_sd
 milkv-duo256m           cv1812cp_milkv_duo256m_sd
@@ -236,7 +251,7 @@ build_all
 pack_sd_image
 ```
 
-For example, if you need to compile the image of `milkv-duo`, the step-by-step compilation command is as follows:
+たとえば、`milkv-duo`向けにイメージをコンパイルする場合のコンパイル手順は以下のとおりです。
 ```bash
 source device/milkv-duo/boardconfig.sh
 
@@ -247,13 +262,11 @@ build_all
 pack_sd_image
 ```
 
-Generated firmware location:
+生成されたファームウェアの場所:
 ```
 Duo:      install/soc_cv1800b_milkv_duo_sd/[board].img
 Duo256M:  install/soc_cv1812cp_milkv_duo256m_sd/[board].img
 ```
-
-Generated firmware location: `install/soc_cv1800b_milkv_duo_sd/milkv-duo.img`.
 
 コンパイルが完了したら`exit`コマンドでDockerから抜けれます:
 ```bash
@@ -305,7 +318,7 @@ cmake version 3.27.6
 ### Windows Subsystem for Linux(WSL)を使用してコンパイル
 
 WSLでコンパイルするには少し問題があります。
-互換性のために$PATHにいくつかのスペース文字を含むWindows用の環境変数が入っています。
+Windowsとの互換性のために環境変数$PATHにいくつかのスペース文字を含むWindows用の環境変数が入っていて、一部でパスが通りません。
 
 解決するには`/etc/wsl.conf`ファイルに以下を追記します。
 
@@ -314,8 +327,8 @@ WSLでコンパイルするには少し問題があります。
 appendWindowsPath = false
 ```
 
-その後、`wsl.exe --reboot`でWSLを再起動する必要があります。そうすれば、自動コンパイルスクリプトを実行するか、手動コンパイルのを行うことができます。
-変更を元に戻すには、`/etc/wsl.conf`の`appendWindowsPath`をtrueに設定します。Powershellから`wsl.exe --shutdown`を実行してから`wsl.exe`すれば、また$PATHからWindowsの環境変数が使えるようになります。
+その後、`wsl.exe --reboot`でWSLを再起動する必要があります。そうすれば手動コンパイルを行うことができます。
+変更を元に戻すには、`/etc/wsl.conf`の`appendWindowsPath`をtrueに設定します。WSLを再起動すれば、また$PATHからWindowsの環境変数が使えるようになります。
 
 ## SDカードへの書き込み
 
@@ -332,7 +345,7 @@ appendWindowsPath = false
 - Milk-V DuoのmicroSDカードスロットにmicroSDカードを挿入します。
 - シリアルケーブルを接続します。(必ずしも必要ではありません)
 - 電源に接続するとシステムが立ち上がります。
-- シリアルケーブルが接続されている場合、ブートログをシリアルコンソールから見ることができます(`mobarXterm`、`Xshell` など)。システムが立ち上がればコンソールからログインしてLinuxコマンドを実行できます。
+- シリアルケーブルが接続されている場合、ブートログをシリアルコンソールから見ることができます(`mobarXterm`、`Xshell` 、`Tera Term`など)。システムが立ち上がればコンソールからログインしてLinuxコマンドを実行できます。
 
 ### Duoのターミナルに入る方法
 
@@ -414,11 +427,12 @@ USBネットワーク(RNDIS)の機能をIO-Board不使用時に使う。
 
 1. なぜ1つのコアしか表示されないのですか。
 
-   CV1800Bチップはデュアルコアですが、現在、Linuxシステムは1つのコアで実行され、もう1つのコアはリアルタイムシステムの実行に使用されています。For the use of this core, please see [official documentation](https://milkv.io/docs/duo/getting-started/rtoscore)。
+   CV1800Bチップはデュアルコアですが、現在、Linuxシステムは1つのコアで実行され、もう1つのコアはリアルタイムシステムの実行に使用されています。このコアの使用については[公式ドキュメント](https://milkv.io/docs/duo/getting-started/rtoscore)をお読みください。
 
 2. なぜ28MBしかRAMが使えないのですか。
  
-   RAMの一部が[ION](https://github.com/milkv-duo/duo-buildroot-sdk/blob/develop/build/boards/default/dts/cv180x/cv180x_default_memmap.dtsi#L15)に割り当てられており、カメラを使ってアルゴリズムを実行するときに使用するメモリに割り当てられているからです。カメラを使用しない場合は、この[ION_SIZE](https://github.com/milkv-duo/duo-buildroot-sdk/blob/develop/build/boards/cv180x/cv1800b_milkv_duo_sd/memmap.py#L43)の値を0に変更し、再コンパイルしてください(Duo 256M: [ION_SIZE](https://github.com/milkv-duo/duo-buildroot-sdk/blob/develop/build/boards/cv181x/cv1812cp_milkv_duo256m_sd/memmap.py#L43))。
+RAMの一部が[ION](https://github.com/milkv-duo/duo-buildroot-sdk/blob/develop/build/boards/default/dts/cv180x/cv180x_default_memmap.dtsi#L15)(カメラを使ってアルゴリズムを実行するときに使用するメモリ)に割り当てられているからです。カメラを使用しない場合は、この[ION_SIZE](https://github.com/milkv-duo/duo-buildroot-sdk/blob/develop/build/boards/cv180x/cv1800b_milkv_duo_sd/memmap.py#L43)の値を0に変更し、再コンパイルしてください(Duo 
+256M: [ION_SIZE](https://github.com/milkv-duo/duo-buildroot-sdk/blob/develop/build/boards/cv181x/cv1812cp_milkv_duo256m_sd/memmap.py#L43))。
 
 ## チップ製造元のドキュメント
 
@@ -432,3 +446,4 @@ USBネットワーク(RNDIS)の機能をIO-Board不使用時に使う。
 # フォーラム
 
 - [MilkV Community](https://community.milkv.io/)
+
