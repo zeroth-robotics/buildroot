@@ -29,7 +29,6 @@ CONFIG_BOOT_IMAGE_SINGLE_DTB=y
 # FIP setting
 #
 CONFIG_FIP_V2=y
-CONFIG_OD_CLK_SEL=y
 # end of FIP setting
 
 #
