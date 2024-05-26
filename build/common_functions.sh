@@ -198,7 +198,7 @@ function copy_tools
     command rm -rf "$OUTPUT_DIR"/tools
     command mkdir -p "$OUTPUT_DIR"/tools/
     command cp -rf "$TOOLS_PATH"/"${CHIP_ARCH,,}"/usb_dl/ "$OUTPUT_DIR"/tools/
-    if [ "$ENABLE_BOOTLOGO" -eq 1 ];then
+    if [[ "$ENABLE_BOOTLOGO" -eq 1 ]] || [[ ${BOARD} == "milkv_duos_sd" ]];then
       python3 "$IMGTOOL_PATH"/raw2cimg.py "$BOOTLOGO_PATH" "$OUTPUT_DIR" "$FLASH_PARTITION_XML"
     fi
     command cp --remove-destination "$FLASH_PARTITION_XML" "$OUTPUT_DIR"/

@@ -573,7 +573,7 @@ function cvi_setup_env()
     BOOTLOGO_PATH="${TOP_DIR}/device/${MV_BOARD}/${MV_BOOTLOGO}"
   else
     ENABLE_BOOTLOGO=0
-    BOOTLOGO_PATH=""
+    BOOTLOGO_PATH="$COMMON_TOOLS_PATH"/bootlogo/logo.jpg
   fi
 }
 
