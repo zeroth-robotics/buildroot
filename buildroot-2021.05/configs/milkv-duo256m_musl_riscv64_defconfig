@@ -331,6 +331,8 @@ BR2_PACKAGE_PYTHON_FREETYPE=y
 
 BR2_PACKAGE_PYTHON_PSUTIL=y
 
+BR2_PACKAGE_PYTHON_NUMPY=y
+
 #
 # Compression and decompression
 #
