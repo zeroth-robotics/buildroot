@@ -482,6 +482,7 @@ function cvi_setup_env()
   SCRIPTTOOL_PATH="$COMMON_TOOLS_PATH"/scripts
   ROOTFSTOOL_PATH="$COMMON_TOOLS_PATH"/rootfs_tool
   SPINANDTOOL_PATH="$COMMON_TOOLS_PATH"/spinand_tool
+  BOOTLOGO_PATH="$COMMON_TOOLS_PATH"/bootlogo/logo.jpg
 
   # subfolder path for buidling, chosen accroding to .gitignore rules
   UBOOT_OUTPUT_FOLDER=build/"$PROJECT_FULLNAME"
@@ -568,12 +569,12 @@ function cvi_setup_env()
   export BR_ROOTFS_DIR="$OUTPUT_DIR"/tmp-rootfs
   export BR_MV_VENDOR_DIR=${BR_DIR}/board/${MV_VENDOR}
 
-  if [ ! -z "${MV_BOOTLOGO// }" ]; then
+  # Check if bootlogo is enabled in the u-boot defconfig
+  UBOOT_DEFCONFIG="${BUILD_PATH}/boards/${CHIP_ARCH,,}/${PROJECT_FULLNAME}/u-boot/${BRAND}_${PROJECT_FULLNAME}_defconfig"
+  if grep -q "CONFIG_BOOTLOGO=y" ${UBOOT_DEFCONFIG}; then
     ENABLE_BOOTLOGO=1
-    BOOTLOGO_PATH="${TOP_DIR}/device/${MV_BOARD}/${MV_BOOTLOGO}"
   else
     ENABLE_BOOTLOGO=0
-    BOOTLOGO_PATH="$COMMON_TOOLS_PATH"/bootlogo/logo.jpg
   fi
 }
 
