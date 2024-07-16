@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export MV_BOARD=milkv-duo256m
+export MV_BOARD=milkv-duo256m-sd
 export MV_BOARD_CPU=cv1812cp
 export MV_VENDOR=milkv
 export MV_BUILD_ENV=milkvsetup.sh
