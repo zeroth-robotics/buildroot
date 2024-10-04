@@ -19,7 +19,7 @@ build_milkv_duo_image:
         wget http://security.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2.19_amd64.deb
         dpkg -i libssl1.1_1.1.1f-1ubuntu2.19_amd64.deb
       fi
-    - bash ./build.sh milkv-duo
+    - bash ./build.sh milkv-duos-sd
     - echo "path=$(ls $CI_PROJECT_DIR/out/*.img)" >> build.env
     - cd $CI_PROJECT_DIR/out && sha256sum *.img >> milk-v.hash
   artifacts:
