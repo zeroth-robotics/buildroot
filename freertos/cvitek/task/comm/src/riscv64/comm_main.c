@@ -1,5 +1,6 @@
 /* Standard includes. */
 #include <stdio.h>
+#include <string.h>
 
 /* Kernel includes. */
 #include "FreeRTOS.h"
@@ -17,9 +18,26 @@
 #include "memmap.h"
 #include "comm.h"
 #include "cvi_spinlock.h"
+#include "uart.h"
+#include "sts3215.h"
+#include "cv181x_reg_fmux_gpio.h"
+// #include "hal_uart_dw.h"
 
 /* Milk-V Duo */
 #include "milkv_duo_io.h"
+
+#define CVIMMAP_SHMEM_ADDR 0x9fd00000  /* offset 509.0MiB */
+#define CVIMMAP_SHMEM_SIZE 0x100000  /* 1.0MiB */
+
+#define UART2 2
+
+#ifndef pdMS_TO_TICKS
+    #define pdMS_TO_TICKS( xTimeInMs )    ( ( TickType_t ) ( ( ( uint64_t ) ( xTimeInMs ) * ( uint64_t ) configTICK_RATE_HZ ) / ( uint64_t ) 1000U ) )
+#endif
+
+#ifndef pdTICKS_TO_MS
+    #define pdTICKS_TO_MS( xTimeInTicks )    ( ( TickType_t ) ( ( ( uint64_t ) ( xTimeInTicks ) * ( uint64_t ) 1000U ) / ( uint64_t ) configTICK_RATE_HZ ) )
+#endif
 
 // #define __DEBUG__
 #ifdef __DEBUG__
@@ -37,17 +55,23 @@ typedef struct _TASK_CTX_S {
 	QueueHandle_t queHandle;
 } TASK_CTX_S;
 
+typedef struct {
+	ServoInfo servo[MAX_SERVOS];
+	uint32_t task_run_count;
+} ServoData;
+
 /****************************************************************************
  * Function prototypes
  ****************************************************************************/
 void prvQueueISR(void);
 void prvCmdQuRunTask(void *pvParameters);
+void prvServosRunTask(void *pvParameters);
 
 
 /****************************************************************************
  * Global parameters
  ****************************************************************************/
-TASK_CTX_S gTaskCtx[1] = {
+TASK_CTX_S gTaskCtx[2] = {
 	{
 		.name = "CMDQU",
 		.stack_size = configMINIMAL_STACK_SIZE,
@@ -56,12 +80,28 @@ TASK_CTX_S gTaskCtx[1] = {
 		.queLength = 30,
 		.queHandle = NULL,
 	},
+	{
+		.name = "SERVOS",
+		.stack_size = configMINIMAL_STACK_SIZE,
+		.priority = tskIDLE_PRIORITY + 3,
+		.runTask = prvServosRunTask,
+		.queLength = 1,
+		.queHandle = NULL,
+	},
 };
 
 /* mailbox parameters */
 volatile struct mailbox_set_register *mbox_reg;
 volatile struct mailbox_done_register *mbox_done_reg;
 volatile unsigned long *mailbox_context; // mailbox buffer context is 64 Bytess
+
+volatile ServoData g_servo_data = {
+	.task_run_count = 0,
+};
+
+volatile int g_servo_readout_enabled = 1;
+
+SemaphoreHandle_t g_servo_data_mutex;
 
 /****************************************************************************
  * Function definitions
@@ -110,6 +150,79 @@ void main_cvirtos(void)
         ;
 }
 
+void prvServosRunTask(void *pvParameters)
+{
+	// Initialize UART2
+	int baudrate = 1000000;
+	int uart_clock = 187500000;
+
+	// https://github.com/milkv-duo/duo-pinmux/blob/main/duos/func.h
+	// FMUX_GPIO_REG_IOCTRL_VIVO_CLK - B22, UART2_RX
+	// { "B227", "UART2_RX"}, => pin B22, func = 7
+	// FMUX_GPIO_REG_IOCTRL_VIVO_D6 - B15, UART2_TX
+	// { "B156", "UART2_TX"}, => pin B15, func = 6
+/*
+	[root@milkv-duo]~# devmem 0x03001160 32
+	0x00000007
+	[root@milkv-duo]~# devmem 0x03001144 32
+	0x00000006
+	[root@milkv-duo]~# devmem 0x03001C2C 32
+	0x00000048
+	[root@milkv-duo]~# devmem 0x03001C10 32
+	0x00000048
+*/
+
+	volatile uint32_t *uart2_rx_pinmux = (volatile uint32_t *)PINMUX_BASE + FMUX_GPIO_REG_IOCTRL_VIVO_CLK;
+	volatile uint32_t *uart2_tx_pinmux = (volatile uint32_t *)PINMUX_BASE + FMUX_GPIO_REG_IOCTRL_VIVO_D6;
+
+	*uart2_rx_pinmux = 7;
+	*uart2_tx_pinmux = 6;
+
+	hal_srv_uart_init(UART2, baudrate, uart_clock);
+
+	g_servo_data_mutex = xSemaphoreCreateMutex();
+ 	
+	TickType_t xLastWakeTime;
+    const TickType_t xFrequency = pdMS_TO_TICKS(4); // 4ms interval
+    uint32_t tick_count = 0;
+
+	xLastWakeTime = xTaskGetTickCount();
+
+	const TickType_t xFullReadInterval = pdMS_TO_TICKS(4); // 500ms = 0.5 seconds
+	TickType_t xLastFullReadTime = xTaskGetTickCount();
+
+	for (;;) {
+        vTaskDelayUntil(&xLastWakeTime, xFrequency);
+
+        TickType_t currentTime = xTaskGetTickCount();
+
+        if (g_servo_readout_enabled && (xSemaphoreTake(g_servo_data_mutex, 10) == pdTRUE)) {
+            g_servo_data.task_run_count++;
+
+            // Read position and status for all servos
+            for (int servo = 0; servo < MAX_SERVOS; servo++) {
+                if (servo_read_position_and_status(servo + 1, &g_servo_data.servo[servo]) != 0) {
+                    // Handle error if needed
+                    // printf("Error reading position and status for servo %d\n", servo + 1);
+                }
+            }
+
+            // Full read every 0.5 seconds
+            if ((currentTime - xLastFullReadTime) >= xFullReadInterval) {
+                for (int servo = 0; servo < MAX_SERVOS; servo++) {
+                    if (servo_read_info(servo + 1, &g_servo_data.servo[servo]) != 0) {
+                        // Handle error if needed
+                        // printf("Error reading full info for servo %d\n", servo + 1);
+                    }
+                }
+                xLastFullReadTime = currentTime;
+            }
+
+            xSemaphoreGive(g_servo_data_mutex);
+        }
+    }
+}
+
 void prvCmdQuRunTask(void *pvParameters)
 {
 	/* Remove compiler warning about unused parameter. */
@@ -123,6 +236,7 @@ void prvCmdQuRunTask(void *pvParameters)
 	int flags;
 	int valid;
 	int send_to_cpu = SEND_TO_CPU1;
+	volatile char *shared_data = CVIMMAP_SHMEM_ADDR;
 
 	unsigned int reg_base = MAILBOX_REG_BASE;
 
@@ -134,44 +248,138 @@ void prvCmdQuRunTask(void *pvParameters)
 
 	cvi_spinlock_init();
 	printf("prvCmdQuRunTask run\n");
+	unsigned int n = 0;
 
 	for (;;) {
 		xQueueReceive(gTaskCtx[0].queHandle, &rtos_cmdq, portMAX_DELAY);
 
 		switch (rtos_cmdq.cmd_id) {
-			case CMD_TEST_A:
-				//do something
-				//send to C906B
-				rtos_cmdq.cmd_id = CMD_TEST_A;
-				rtos_cmdq.param_ptr = 0x12345678;
-				rtos_cmdq.resv.valid.rtos_valid = 1;
-				rtos_cmdq.resv.valid.linux_valid = 0;
-				printf("recv cmd(%d) from C906B...send [0x%x] to C906B\n", rtos_cmdq.cmd_id, rtos_cmdq.param_ptr);
-				goto send_label;
-			case CMD_TEST_B:
-				//nothing to do
-				printf("nothing to do...\n");
-				break;
-			case CMD_TEST_C:
-				rtos_cmdq.cmd_id = CMD_TEST_C;
-				rtos_cmdq.param_ptr = 0x55aa;
-				rtos_cmdq.resv.valid.rtos_valid = 1;
-				rtos_cmdq.resv.valid.linux_valid = 0;
-				printf("recv cmd(%d) from C906B...send [0x%x] to C906B\n", rtos_cmdq.cmd_id, rtos_cmdq.param_ptr);
-				goto send_label;
-			case CMD_DUO_LED:
-				rtos_cmdq.cmd_id = CMD_DUO_LED;
-				printf("recv cmd(%d) from C906B, param_ptr [0x%x]\n", rtos_cmdq.cmd_id, rtos_cmdq.param_ptr);
-				if (rtos_cmdq.param_ptr == DUO_LED_ON) {
-					duo_led_control(1);
-				} else {
-					duo_led_control(0);
+			case SYS_CMD_MSG_TEST:
+				{
+					// rtos_cmdq.param_ptr &= 0xFFFFFFFF;
+					TickType_t currentTime = xTaskGetTickCount();
+					inv_dcache_range(shared_data, 100);
+					// printf("Received message: %s\n", (char*)shared_data);
+					char message[100];
+        			snprintf(message, sizeof(message), "Hello from small core %d tkrate %d! Got %s", currentTime, configTICK_RATE_HZ, ((char*) shared_data));
+        			strcpy(shared_data, message);
+					flush_dcache_range(shared_data, 100);
+					rtos_cmdq.cmd_id = SYS_CMD_MSG_TEST;
+					rtos_cmdq.resv.valid.rtos_valid = 1;
+					rtos_cmdq.resv.valid.linux_valid = 0;
+					currentTime = xTaskGetTickCount();
+					// printf("t: %d", currentTime);
+					goto send_label;
 				}
-				rtos_cmdq.param_ptr = DUO_LED_DONE;
-				rtos_cmdq.resv.valid.rtos_valid = 1;
-				rtos_cmdq.resv.valid.linux_valid = 0;
-				printf("recv cmd(%d) from C906B...send [0x%x] to C906B\n", rtos_cmdq.cmd_id, rtos_cmdq.param_ptr);
-				goto send_label;
+				break;
+			case SYS_CMD_GET_SERVO_VALUES:
+                {
+                    volatile ServoData *shared_servo_data = (volatile ServoData *)CVIMMAP_SHMEM_ADDR;
+                    
+                    if (xSemaphoreTake(g_servo_data_mutex, portMAX_DELAY) == pdTRUE) {
+                        memcpy((void *)shared_servo_data, (void *)&g_servo_data, sizeof(g_servo_data));
+						g_servo_data.task_run_count = 0; // Reset the counter after reading
+                        xSemaphoreGive(g_servo_data_mutex);
+                    }
+
+                    flush_dcache_range(shared_servo_data, sizeof(g_servo_data));
+
+                    rtos_cmdq.cmd_id = SYS_CMD_GET_SERVO_VALUES;
+                    rtos_cmdq.resv.valid.rtos_valid = 1;
+                    rtos_cmdq.resv.valid.linux_valid = 0;
+                    goto send_label;
+                }
+                break;
+			case SYS_CMD_SERVO_WRITE:
+                {
+                    volatile ServoCommand *shared_servo_command = (volatile ServoCommand *)CVIMMAP_SHMEM_ADDR;
+                    ServoCommand local_command;
+
+                    inv_dcache_range(shared_servo_command, sizeof(ServoCommand));
+                    memcpy(&local_command, (void *)shared_servo_command, sizeof(ServoCommand));
+					// printf("local_command.id: %d, address: %d, length: %d; data[0]: %d, data[1]: %d, data[2]: %d, data[3]: %d, data[4]: %d, data[5]: %d\n", local_command.id, local_command.address, local_command.length, local_command.data[0], local_command.data[1], local_command.data[2], local_command.data[3], local_command.data[4], local_command.data[5]);
+
+					if (xSemaphoreTake(g_servo_data_mutex, portMAX_DELAY) == pdTRUE) {
+						servo_write_command(&local_command);
+						vTaskDelay(1);
+						xSemaphoreGive(g_servo_data_mutex);
+					}
+
+                    // Send back the result
+                    // *(volatile int *)CVIMMAP_SHMEM_ADDR = result;
+                    // flush_dcache_range(CVIMMAP_SHMEM_ADDR, sizeof(int));
+
+                    rtos_cmdq.cmd_id = SYS_CMD_SERVO_WRITE;
+                    rtos_cmdq.resv.valid.rtos_valid = 1;
+                    rtos_cmdq.resv.valid.linux_valid = 0;
+                    goto send_label;
+                }
+                break;
+				case SYS_CMD_SERVO_READ:
+				{
+					volatile ServoCommand *shared_servo_command = (volatile ServoCommand *)CVIMMAP_SHMEM_ADDR;
+					ServoCommand local_command;
+
+					inv_dcache_range(shared_servo_command, sizeof(ServoCommand));
+					memcpy(&local_command, (void *)shared_servo_command, sizeof(ServoCommand));
+
+					if (xSemaphoreTake(g_servo_data_mutex, portMAX_DELAY) == pdTRUE) {
+						uint8_t response[256] = {0};  // Use the full 256-byte buffer
+						int result = servo_read_command(&local_command, response);
+
+						// Write the response to shared memory
+						memcpy((void *)shared_data, response, 256);
+						flush_dcache_range(shared_data, 256);
+
+						xSemaphoreGive(g_servo_data_mutex);
+					}
+
+					rtos_cmdq.cmd_id = SYS_CMD_SERVO_READ;
+					rtos_cmdq.resv.valid.rtos_valid = 1;
+					rtos_cmdq.resv.valid.linux_valid = 0;
+					goto send_label;
+				}
+				break;
+			case SYS_CMD_SERVO_READOUT_ENABLE:
+				{
+					g_servo_readout_enabled = 1;
+					rtos_cmdq.resv.valid.rtos_valid = 1;
+                    rtos_cmdq.resv.valid.linux_valid = 0;
+                    goto send_label;
+				}
+				break;
+			case SYS_CMD_SERVO_READOUT_DISABLE:
+				{
+					g_servo_readout_enabled = 0;
+					rtos_cmdq.resv.valid.rtos_valid = 1;
+                    rtos_cmdq.resv.valid.linux_valid = 0;
+                    goto send_label;
+				}
+				break;
+			case SYS_CMD_SERVO_WRITE_MULTIPLE:
+				{
+					volatile ServoMultipleWriteCommand *shared_command = (volatile ServoMultipleWriteCommand *)CVIMMAP_SHMEM_ADDR;
+					ServoMultipleWriteCommand local_command;
+
+					inv_dcache_range(shared_command, sizeof(ServoMultipleWriteCommand));
+					memcpy(&local_command, (void *)shared_command, sizeof(ServoMultipleWriteCommand));
+
+					if (xSemaphoreTake(g_servo_data_mutex, portMAX_DELAY) == pdTRUE) {
+						int result = servo_move_multiple_sync(local_command.ids, local_command.positions, 
+															local_command.times, local_command.speeds, MAX_SERVOS, local_command.only_write_positions);
+						
+						// Write the result back to shared memory
+						*(volatile int *)CVIMMAP_SHMEM_ADDR = result;
+						flush_dcache_range(CVIMMAP_SHMEM_ADDR, 4);
+
+						xSemaphoreGive(g_servo_data_mutex);
+					}
+					rtos_cmdq.cmd_id = SYS_CMD_SERVO_WRITE_MULTIPLE;
+					rtos_cmdq.resv.valid.rtos_valid = 1;
+					rtos_cmdq.resv.valid.linux_valid = 0;
+					goto send_label;
+				}
+				break;
 			default:
 send_label:
 				/* used to send command to linux*/
@@ -230,7 +438,7 @@ send_label:
 
 void prvQueueISR(void)
 {
-	printf("prvQueueISR\n");
+	// printf("prvQueueISR\n");
 	unsigned char set_val;
 	unsigned char valid_val;
 	int i;

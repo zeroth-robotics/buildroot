@@ -50,6 +50,20 @@ int cvi_board_init(void)
 	PINMUX_CONFIG(PWR_WAKEUP0, EPHY_LNK_LED);
 	PINMUX_CONFIG(PWR_BUTTON1, EPHY_SPD_LED);
 
+	// UART2
+	PINMUX_CONFIG(VIVO_CLK, UART2_RX);
+	PINMUX_CONFIG(VIVO_D6, UART2_TX);
+
+	// UART dividers & uart0 fix
+    // per 8.9.27 of sg2000_trm_en.pdf v1.01; setting UART* clock source to
+    // disppll (1.188GHz) and dividing by 15 (to 79.2MHz)
+    volatile uint32_t *reg_div_clk_cam0_200 = (volatile uint32_t *)0x030020a8;
+    *reg_div_clk_cam0_200 = 0xF0109;
+
+    // fix uboot logs, TODO: fix uboot dts and move clock init to appropriate place to avoid this bs
+    volatile uint32_t *uart0_dll = (volatile uint32_t *)0x04140020;
+    *uart0_dll = 43;
+
 	set_rtc_register_for_power();
 
 	return 0;

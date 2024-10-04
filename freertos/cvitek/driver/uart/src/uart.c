@@ -11,7 +11,7 @@
 void uart_init(void)
 {
 	int baudrate = 115200;
-	int uart_clock = 25 * 1000 * 1000;
+	int uart_clock = 79200000;
 
 	/* set uart to pinmux_uart1 */
 	//pinmux_config(PINMUX_UART0);

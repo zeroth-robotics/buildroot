@@ -20,6 +20,12 @@ class MemoryMap:
     FREERTOS_ADDR = DRAM_BASE + DRAM_SIZE - FREERTOS_SIZE
     FSBL_C906L_START_ADDR = FREERTOS_ADDR
 
+    # ================================
+    # Shared memory FreeRTOS <=> Linux
+    # ================================
+    SHMEM_SIZE = 1 * SIZE_1M
+    SHMEM_ADDR = FREERTOS_ADDR - SHMEM_SIZE
+
     # ==============================
     # OpenSBI | arm-trusted-firmware
     # ==============================
@@ -35,19 +41,19 @@ class MemoryMap:
     # =========================
     # Ignore the area of FreeRTOS in u-boot and kernel
     KERNEL_MEMORY_ADDR = DRAM_BASE
-    KERNEL_MEMORY_SIZE = DRAM_SIZE - FREERTOS_SIZE
+    KERNEL_MEMORY_SIZE = DRAM_SIZE - FREERTOS_SIZE - SHMEM_SIZE
 
     # =================
     # Multimedia buffer. Used by u-boot/kernel/FreeRTOS
     # =================
-    ION_SIZE = 170 * SIZE_1M
+    ION_SIZE = 32 * SIZE_1M
     H26X_BITSTREAM_SIZE = 2 * SIZE_1M
     H26X_ENC_BUFF_SIZE = 0
     ISP_MEM_BASE_SIZE = 20 * SIZE_1M
     FREERTOS_RESERVED_ION_SIZE = H26X_BITSTREAM_SIZE + H26X_ENC_BUFF_SIZE + ISP_MEM_BASE_SIZE
 
-    # ION after FreeRTOS
-    ION_ADDR = FREERTOS_ADDR - ION_SIZE
+    # ION after FreeRTOS/Shared memory
+    ION_ADDR = SHMEM_ADDR - ION_SIZE
 
     # Buffers of the fast image are inside the ION buffer
     H26X_BITSTREAM_ADDR = ION_ADDR

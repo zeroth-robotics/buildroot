@@ -3,7 +3,7 @@
 
 #define SEC_BASE                                0x02000000
 #define TOP_BASE                                0x03000000
-// #define PINMUX_BASE                             (TOP_BASE + 0x00001000)
+#define PINMUX_BASE                             (TOP_BASE + 0x00001000)
 #define CLKGEN_BASE                             (TOP_BASE + 0x00002000)
 #define WDT_BASE                                (TOP_BASE + 0x00011000)
 #define TEMPSEN_BASE                            (TOP_BASE + 0x000E0000)
@@ -39,6 +39,7 @@
 #define REG_CLK_ENABLE_REG0                     (CLKGEN_BASE)
 #define REG_CLK_ENABLE_REG1                     (CLKGEN_BASE + 0x4)
 #define REG_CLK_ENABLE_REG2                     (CLKGEN_BASE + 0x8)
+#define REG_DIV_CLK_CAM0_200                    (CLKGEN_BASE + 0xa8)
 #define REG_CLK_BYPASS_SEL_REG                  (CLKGEN_BASE + 0x30)
 #define REG_CLK_BYPASS_SEL_REG2                 (CLKGEN_BASE + 0x34)
 #define REG_CLK_DIV0_CTL_CA53_REG               (CLKGEN_BASE + 0x40)
