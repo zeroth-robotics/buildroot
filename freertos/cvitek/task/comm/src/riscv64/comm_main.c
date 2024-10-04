@@ -188,7 +188,7 @@ void prvServosRunTask(void *pvParameters)
 
 	xLastWakeTime = xTaskGetTickCount();
 
-	const TickType_t xFullReadInterval = pdMS_TO_TICKS(4); // 500ms = 0.5 seconds
+        const TickType_t xFullReadInterval = pdMS_TO_TICKS(1000); // 1000ms = 1 second
 	TickType_t xLastFullReadTime = xTaskGetTickCount();
 
 	for (;;) {
