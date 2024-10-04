@@ -1,0 +1,32 @@
+image: ubuntu:22.04
+
+variables:
+  TZ: US/P
+
+stages:
+  - build
+
+build_milkv_duo_image:
+  stage: build
+  only:
+    - tags
+  script:
+    - apt-get update -qq
+    - apt-get install -y -qq pkg-config build-essential ninja-build automake autoconf libtool wget curl git gcc libssl-dev bc slib squashfs-tools android-sdk-libsparse-utils jq python3-distutils scons parallel tree python3-dev python3-pip device-tree-compiler ssh cpio fakeroot libncurses5 flex bison libncurses5-dev genext2fs rsync unzip dosfstools mtools tcl openssh-client cmake expect libconfuse2
+    - ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+    - |
+      if [ "$(dpkg -s libssl1.1 | grep 'Status:')" != "Status: install ok installed" ]; then
+        wget http://security.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2.19_amd64.deb
+        dpkg -i libssl1.1_1.1.1f-1ubuntu2.19_amd64.deb
+      fi
+    - bash ./build.sh milkv-duo
+    - echo "path=$(ls $CI_PROJECT_DIR/out/*.img)" >> build.env
+    - cd $CI_PROJECT_DIR/out && sha256sum *.img >> milk-v.hash
+  artifacts:
+    paths:
+      - $CI_PROJECT_DIR/out/*.img
+      - $CI_PROJECT_DIR/out/milk-v.hash
+    reports:
+      dotenv: build.env
+  tags:
+    - linux-x64
