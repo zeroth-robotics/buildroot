@@ -47,7 +47,7 @@ build_milkv_duo_image:
     # Copy artifacts to buildroot overlay
     - cp build-cviwrapper_artifacts/runtime/firmware/cviwrapper/libcviwrapper.so device/common/br_overlay/lib/
     - cp build-servo_artifacts/runtime/firmware/sts3215/libsts3215.so device/common/br_overlay/lib/
-    - chmod +x build-servo_artifacts/runtime/target/riscv64gc-unknown-linux-musl/release/*
+    - chmod +x build-runtime_artifacts/runtime/target/riscv64gc-unknown-linux-musl/release/*
     - cp build-runtime_artifacts/runtime/target/riscv64gc-unknown-linux-musl/release/* device/common/br_overlay/usr/local/bin/
 
     - bash ./build.sh milkv-duos-sd
