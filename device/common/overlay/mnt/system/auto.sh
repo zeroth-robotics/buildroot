@@ -8,8 +8,7 @@ log_file="/var/log/auto.sh.log"
 # Continuously attempt to detect if the interface exists, up to $max_attempts times
 echo "start auto.sh" > "$log_file"
 
-#duo-pinmux -w B22/UART2_RX
-#duo-pinmux -w B15/UART2_TX
+nohup /usr/local/bin/sts_server > /var/log/sts_server.log 2>&1 &
 
 while [ $attempt -lt $max_attempts ]; do
     # Check if the wlan0 interface exists
@@ -32,4 +31,3 @@ done
 if [ $attempt -eq $max_attempts ]; then
     echo "$(date +'%Y-%m-%d %H:%M:%S') Interface $interface not found after $max_attempts attempts" >> "$log_file"
 fi
-
