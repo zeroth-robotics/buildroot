@@ -52,7 +52,7 @@ void console_init(uintptr_t not_used, unsigned int uart_clk, unsigned int baud_r
 	int baudrate = baud_rate;
 	int uart_clock = uart_clk;
 
-	int divisor = uart_clock / (16 * baudrate);
+	int divisor = 43;
 
 	uart->lcr = uart->lcr | UART_LCR_DLAB | UART_LCR_8N1;
 	asm (""::: "memory");
