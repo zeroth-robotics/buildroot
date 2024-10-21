@@ -435,7 +435,7 @@ extern struct _time_records *time_records;
  * UART buadrate and clock
  */
 #define PLAT_CONSOLE_BAUDRATE 115200
-#define PLAT_UART_CLK_IN_HZ 79000000
+#define PLAT_UART_CLK_IN_HZ 25000000
 
 /*
  * UART download

@@ -7,6 +7,10 @@
 #include <linux/io.h>
 #include <linux/clk.h>
 #include <linux/module.h>
+#include <linux/fs.h>
+#include <linux/device.h>
+#include <linux/cdev.h>
+#include <linux/uaccess.h>
 
 #include "linux/cv180x_efuse.h"
 
@@ -154,8 +158,10 @@ static int cvi_efuse_write_word(uint32_t vir_word_addr, uint32_t val)
 	return err_cnt >= 2 ? -EIO : 0;
 }
 
-int __init cvi_efuse_init(void)
+static int __init cv181x_efuse_init(void)
 {
+	int ret;
+
 	efuse_base = ioremap(EFUSE_BASE, 0x1000);
 	if (efuse_base == NULL)
 		return -ENOMEM;
@@ -167,12 +173,54 @@ int __init cvi_efuse_init(void)
 		return PTR_ERR(efuse_clk);
 	}
 
+	// Dynamically allocate a device number
+	ret = alloc_chrdev_region(&efuse_dev, 0, 1, "efuse");
+	if (ret < 0) {
+		pr_err("Failed to allocate device number\n");
+		return ret;
+	}
+
+	// Initialize the cdev structure and add it to the kernel
+	cdev_init(&efuse_cdev, &efuse_fops);
+	ret = cdev_add(&efuse_cdev, efuse_dev, 1);
+	if (ret < 0) {
+		pr_err("Failed to add character device\n");
+		unregister_chrdev_region(efuse_dev, 1);
+		return ret;
+	}
+
+	// Create the device class
+	efuse_class = class_create(THIS_MODULE, "efuse");
+	if (IS_ERR(efuse_class)) {
+		pr_err("Failed to create device class\n");
+		cdev_del(&efuse_cdev);
+		unregister_chrdev_region(efuse_dev, 1);
+		return PTR_ERR(efuse_class);
+	}
+
+	// Create the device file
+	if (IS_ERR(device_create(efuse_class, NULL, efuse_dev, NULL, "efuse"))) {
+		pr_err("Failed to create device file\n");
+		class_destroy(efuse_class);
+		cdev_del(&efuse_cdev);
+		unregister_chrdev_region(efuse_dev, 1);
+		return PTR_ERR(efuse_class);
+	}
+
+	pr_info("Efuse device created successfully\n");
 	return 0;
 }
 
-void __exit cvi_efuse_exit(void)
+void __exit cv181x_efuse_exit(void)
 {
 	iounmap(efuse_base);
+
+	device_destroy(efuse_class, efuse_dev);
+	class_destroy(efuse_class);
+	cdev_del(&efuse_cdev);
+	unregister_chrdev_region(efuse_dev, 1);
+
+	pr_info("Efuse device removed\n");
 }
 
 int64_t cvi_efuse_read_from_shadow(uint32_t addr)
@@ -259,6 +307,115 @@ int cvi_efuse_read_buf(u32 addr, void *buf, size_t buf_size)
 	return buf_size;
 }
 EXPORT_SYMBOL(cvi_efuse_read_buf);
+
+static dev_t efuse_dev;
+static struct cdev efuse_cdev;
+static struct class *efuse_class;
+
+#define EFUSE_IOC_MAGIC 'E'
+#define EFUSE_IOC_READ _IOR(EFUSE_IOC_MAGIC, 1, struct efuse_data)
+#define EFUSE_IOC_WRITE _IOW(EFUSE_IOC_MAGIC, 2, struct efuse_data)
+
+struct efuse_data {
+    uint32_t addr;
+    uint32_t value;
+};
+
+static int efuse_open(struct inode *inode, struct file *file)
+{
+	// No special initialization needed
+	return 0;
+}
+
+static int efuse_release(struct inode *inode, struct file *file)
+{
+	// No special cleanup needed
+	return 0;
+}
+
+static ssize_t efuse_read(struct file *file, char __user *buf, size_t count, loff_t *offset)
+{
+	int ret;
+	char kernel_buf[EFUSE_SIZE];
+
+	if (*offset >= EFUSE_SIZE)
+		return 0;  // EOF
+
+	if (*offset + count > EFUSE_SIZE)
+		count = EFUSE_SIZE - *offset;
+
+	ret = cvi_efuse_read_buf(*offset, kernel_buf, count);
+	if (ret < 0)
+		return ret;
+
+	if (copy_to_user(buf, kernel_buf, ret))
+		return -EFAULT;
+
+	*offset += ret;
+	return ret;
+}
+
+static ssize_t efuse_write(struct file *file, const char __user *buf, size_t count, loff_t *offset)
+{
+	int ret;
+	uint32_t addr, value;
+
+	if (count != sizeof(uint32_t) * 2)
+		return -EINVAL;
+
+	if (copy_from_user(&addr, buf, sizeof(uint32_t)))
+		return -EFAULT;
+
+	if (copy_from_user(&value, buf + sizeof(uint32_t), sizeof(uint32_t)))
+		return -EFAULT;
+
+	ret = cvi_efuse_write(addr, value);
+	if (ret < 0)
+		return ret;
+
+	*offset += count;
+	return count;
+}
+
+static long efuse_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+{
+	struct efuse_data data;
+	int64_t ret;
+
+	if (copy_from_user(&data, (struct efuse_data __user *)arg, sizeof(data)))
+		return -EFAULT;
+
+	switch (cmd) {
+	case EFUSE_IOC_READ:
+		ret = cvi_efuse_read_from_shadow(data.addr);
+		if (ret < 0)
+			return ret;
+		data.value = ret;
+		if (copy_to_user((struct efuse_data __user *)arg, &data, sizeof(data)))
+			return -EFAULT;
+		break;
+
+	case EFUSE_IOC_WRITE:
+		ret = cvi_efuse_write(data.addr, data.value);
+		if (ret < 0)
+			return ret;
+		break;
+
+	default:
+		return -ENOTTY;
+	}
+
+	return 0;
+}
+
+static const struct file_operations efuse_fops = {
+	.owner = THIS_MODULE,
+	.open = efuse_open,
+	.release = efuse_release,
+	.read = efuse_read,
+	.write = efuse_write,
+	.unlocked_ioctl = efuse_ioctl,
+};
 
 module_init(cvi_efuse_init);
 module_exit(cvi_efuse_exit);

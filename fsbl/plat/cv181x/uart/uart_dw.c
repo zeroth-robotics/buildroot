@@ -49,7 +49,10 @@ static struct dw_regs *uart = (struct dw_regs *)PLAT_BOOT_UART_BASE;
 
 void console_init(uintptr_t not_used, unsigned int uart_clk, unsigned int baud_rate)
 {
-	int divisor = 43;
+	int baudrate = baud_rate;
+	int uart_clock = uart_clk;
+
+	int divisor = uart_clock / (16 * baudrate);
 
 	uart->lcr = uart->lcr | UART_LCR_DLAB | UART_LCR_8N1;
 	asm (""::: "memory");

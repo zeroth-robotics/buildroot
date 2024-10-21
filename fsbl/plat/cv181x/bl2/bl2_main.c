@@ -54,7 +54,7 @@ int dec_verify_image(const void *image, size_t size, size_t dec_skip, struct fip
 void set_baudrate()
 {
 	// 14 for 115200, 13 for 128000
-	int baud_divisor = 43;
+	int baud_divisor = 14;
 
 	// set DLAB to 1 to set dll and dlh
 	*(volatile uint32_t*)(UART_LCR) |= (uint32_t)0x80;
