@@ -360,8 +360,8 @@ EXPORT_SYMBOL(cvi_efuse_read_from_shadow);
 
 int cvi_efuse_write(uint32_t addr, uint32_t value)
 {
+#if 0
 	int ret;
-
 	VERBOSE("%s(): 0x%x = 0x%x\n", __func__, addr, value);
 
 	if (addr >= EFUSE_SIZE)
@@ -387,6 +387,9 @@ int cvi_efuse_write(uint32_t addr, uint32_t value)
 	clk_disable_unprepare(efuse_clk);
 
 	return ret;
+#else
+	return -1;
+#endif
 }
 EXPORT_SYMBOL(cvi_efuse_write);
 
