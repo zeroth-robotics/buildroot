@@ -5,6 +5,19 @@ max_attempts=100
 attempt=0
 log_file="/var/log/auto.sh.log"
 
+# Get MAC addresses from efuse_read_serial
+mac_addresses=$(efuse_read_serial | grep "MAC" | awk '{print $2}')
+mac1=$(echo "$mac_addresses" | sed -n '1p')
+mac2=$(echo "$mac_addresses" | sed -n '2p')
+
+# Set static MAC addresses
+ip link set eth0 down
+ip link set wlan0 down
+ip link set eth0 address "$mac1"
+ip link set wlan0 address "$mac2"
+ip link set eth0 up
+ip link set wlan0 up
+
 # Continuously attempt to detect if the interface exists, up to $max_attempts times
 echo "start auto.sh" > "$log_file"
 
@@ -15,9 +28,6 @@ while [ $attempt -lt $max_attempts ]; do
     ip link show "$interface" > /dev/null 2>&1
     if [ $? -eq 0 ]; then
         echo "$(date +'%Y-%m-%d %H:%M:%S') $interface interface exists, starting wpa_supplicant..." >> "$log_file"
-	ip link set wlan0 down
-        ifconfig wlan0 hw ether 88:00:33:77:FB:40
-	ip link set wlan0 up
         wpa_supplicant -B -i "$interface" -c /boot/wpa_supplicant.conf >> "$log_file"
         break  # Exit the loop if the interface is found
     else
