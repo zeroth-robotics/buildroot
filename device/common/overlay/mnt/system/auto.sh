@@ -7,8 +7,8 @@ log_file="/var/log/auto.sh.log"
 
 # Get MAC addresses from efuse_read_serial
 mac_addresses=$(efuse_read_serial | grep "MAC" | awk '{print $2}')
-mac1=$(echo "$mac_addresses" | sed -n '1p')
-mac2=$(echo "$mac_addresses" | sed -n '2p')
+mac1=$(echo "$mac_addresses" | sed -n '2p')
+mac2=$(echo "$mac_addresses" | sed -n '3p')
 
 # Set static MAC addresses
 ip link set eth0 down
