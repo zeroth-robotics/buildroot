@@ -1,43 +1,55 @@
 #!/bin/sh
 
-interface="wlan0"
-max_attempts=100
-attempt=0
+max_attempts=15
 log_file="/var/log/auto.sh.log"
+
+echo "start auto.sh" > "$log_file"
 
 # Get MAC addresses from efuse_read_serial
 mac_addresses=$(efuse_read_serial | grep "MAC" | awk '{print $2}')
 mac1=$(echo "$mac_addresses" | sed -n '2p')
 mac2=$(echo "$mac_addresses" | sed -n '3p')
 
-# Set static MAC addresses
-ip link set eth0 down
-ip link set wlan0 down
-ip link set eth0 address "$mac1"
-ip link set wlan0 address "$mac2"
-ip link set eth0 up
-ip link set wlan0 up
+# Function to wait for interface and set MAC address
+wait_and_set_mac() {
+    interface=$1
+    mac_address=$2
+    attempt=0
 
-# Continuously attempt to detect if the interface exists, up to $max_attempts times
-echo "start auto.sh" > "$log_file"
+    while [ $attempt -lt $max_attempts ]; do
+        ip link show "$interface" > /dev/null 2>&1
+        if [ $? -eq 0 ]; then
+            echo "$(date +'%Y-%m-%d %H:%M:%S') $interface interface exists, setting MAC address..." >> "$log_file"
+            ip link set "$interface" down
+            ip link set "$interface" address "$mac_address"
+            ip link set "$interface" up
+            echo "$(date +'%Y-%m-%d %H:%M:%S') MAC address for $interface set to $mac_address" >> "$log_file"
+            return 0
+        else
+            echo "$(date +'%Y-%m-%d %H:%M:%S') $interface interface not found, waiting... (Attempt $((attempt+1))/$max_attempts)" >> "$log_file"
+            sleep 1
+            attempt=$((attempt + 1))
+        fi
+    done
 
-nohup /usr/local/bin/sts_server > /var/log/sts_server.log 2>&1 &
-
-while [ $attempt -lt $max_attempts ]; do
-    # Check if the wlan0 interface exists
-    ip link show "$interface" > /dev/null 2>&1
-    if [ $? -eq 0 ]; then
-        echo "$(date +'%Y-%m-%d %H:%M:%S') $interface interface exists, starting wpa_supplicant..." >> "$log_file"
-        wpa_supplicant -B -i "$interface" -c /boot/wpa_supplicant.conf >> "$log_file"
-        break  # Exit the loop if the interface is found
-    else
-        echo "$(date +'%Y-%m-%d %H:%M:%S') $interface interface not found, waiting..." >> "$log_file"
-        sleep 1  # Wait for 1 second before checking again
-        attempt=$((attempt + 1))  # Increment the attempt counter
-    fi
-done
-
-# If the maximum number of attempts is reached and the interface still not found, output an error message
-if [ $attempt -eq $max_attempts ]; then
     echo "$(date +'%Y-%m-%d %H:%M:%S') Interface $interface not found after $max_attempts attempts" >> "$log_file"
+    return 1
+}
+
+# Wait for eth0 and set its MAC address
+wait_and_set_mac "eth0" "$mac1"
+
+# Wait for wlan0 and set its MAC address
+wait_and_set_mac "wlan0" "$mac2"
+
+# Start wpa_supplicant for wlan0 if it exists
+if ip link show wlan0 > /dev/null 2>&1; then
+    echo "$(date +'%Y-%m-%d %H:%M:%S') Starting wpa_supplicant for wlan0..." >> "$log_file"
+    wpa_supplicant -B -i wlan0 -c /boot/wpa_supplicant.conf >> "$log_file" 2>&1
+else
+    echo "$(date +'%Y-%m-%d %H:%M:%S') wlan0 interface not available, skipping wpa_supplicant" >> "$log_file"
 fi
+
+# Start sts_server
+echo "$(date +'%Y-%m-%d %H:%M:%S') Starting sts_server..." >> "$log_file"
+nohup /usr/local/bin/sts_server > /var/log/sts_server.log 2>&1 &
