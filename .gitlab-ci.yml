@@ -21,6 +21,7 @@ build_milkv_duo_image:
         wget http://security.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2_amd64.deb
         dpkg -i libssl1.1_1.1.1f-1ubuntu2_amd64.deb
       fi
+    - DEBIAN_FRONTEND=noninteractive apt-get install -y -qq xz-utils
   
   script:
     # Fetch the latest successful pipeline ID from the main branch
@@ -52,12 +53,14 @@ build_milkv_duo_image:
     - cp build-runtime_artifacts/runtime/target/riscv64gc-unknown-linux-musl/release/* device/common/br_overlay/usr/local/bin/ || true
     - cp build-efuse_artifacts/runtime/firmware/efuse/efuse_read_serial device/common/br_overlay/usr/local/bin/
     - bash ./build.sh milkv-duos-sd
-    - echo "path=$(ls $CI_PROJECT_DIR/out/*.img)" >> build.env
-    - cd $CI_PROJECT_DIR/out && sha256sum *.img >> milk-v.hash
+    - cp $CI_PROJECT_DIR/out/*.img $CI_PROJECT_DIR/
+    - cd $CI_PROJECT_DIR && tar -cvf milkv-duos-sd.tar *.img && xz -z milkv-duos-sd.tar
+    - echo "path=$(ls $CI_PROJECT_DIR/*.tar.xz)" >> build.env
+    - sha256sum *.tar.xz >> milk-v.hash
   artifacts:
     paths:
-      - $CI_PROJECT_DIR/out/*.img
-      - $CI_PROJECT_DIR/out/milk-v.hash
+      - $CI_PROJECT_DIR/*.tar.xz
+      - $CI_PROJECT_DIR/milk-v.hash
     reports:
       dotenv: build.env
   tags:
