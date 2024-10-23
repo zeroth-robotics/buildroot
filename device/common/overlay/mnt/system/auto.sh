@@ -5,6 +5,10 @@ log_file="/var/log/auto.sh.log"
 
 echo "start auto.sh" > "$log_file"
 
+# Start sts_server
+echo "$(date +'%Y-%m-%d %H:%M:%S') Starting sts_server..." >> "$log_file"
+nohup /usr/local/bin/sts_server > /var/log/sts_server.log 2>&1 &
+
 # Function to wait for valid MAC addresses
 wait_for_mac_addresses() {
     attempt=0
@@ -72,7 +76,3 @@ if ip link show wlan0 > /dev/null 2>&1; then
 else
     echo "$(date +'%Y-%m-%d %H:%M:%S') wlan0 interface not available, skipping wpa_supplicant" >> "$log_file"
 fi
-
-# Start sts_server
-echo "$(date +'%Y-%m-%d %H:%M:%S') Starting sts_server..." >> "$log_file"
-nohup /usr/local/bin/sts_server > /var/log/sts_server.log 2>&1 &
