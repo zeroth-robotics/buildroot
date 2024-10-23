@@ -2,8 +2,8 @@
     "server": {
       "debug": true,
       "http_debug": false,
-      "http_demo": false,
-      "http_dir": "web",
+      "http_demo": true,
+      "http_dir": "/var/www/web",
       "http_login": "demo",
       "http_password": "demo",
       "http_port": ":8083",
