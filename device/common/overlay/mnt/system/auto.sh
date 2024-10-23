@@ -5,10 +5,28 @@ log_file="/var/log/auto.sh.log"
 
 echo "start auto.sh" > "$log_file"
 
-# Get MAC addresses from efuse_read_serial
-mac_addresses=$(efuse_read_serial | grep "MAC" | awk '{print $2}')
-mac1=$(echo "$mac_addresses" | sed -n '2p')
-mac2=$(echo "$mac_addresses" | sed -n '3p')
+# Function to wait for valid MAC addresses
+wait_for_mac_addresses() {
+    attempt=0
+
+    while [ $attempt -lt $max_attempts ]; do
+        mac1=$(cat /tmp/mac1)
+        mac2=$(cat /tmp/mac2)
+
+        # Check if both MAC addresses are non-empty and in the correct format
+        if [ -n "$mac1" ] && [ -n "$mac2" ]; then
+            echo "$(date +'%Y-%m-%d %H:%M:%S') Valid MAC addresses obtained: MAC1=$mac1, MAC2=$mac2" >> "$log_file"
+            return 0
+        fi
+
+        echo "$(date +'%Y-%m-%d %H:%M:%S') Waiting for valid MAC addresses... (Attempt $((attempt+1))/$max_attempts)" >> "$log_file"
+        sleep 1
+        attempt=$((attempt + 1))
+    done
+
+    echo "$(date +'%Y-%m-%d %H:%M:%S') Failed to obtain valid MAC addresses after $max_attempts attempts" >> "$log_file"
+    return 1
+}
 
 # Function to wait for interface and set MAC address
 wait_and_set_mac() {
@@ -17,8 +35,7 @@ wait_and_set_mac() {
     attempt=0
 
     while [ $attempt -lt $max_attempts ]; do
-        ip link show "$interface" > /dev/null 2>&1
-        if [ $? -eq 0 ]; then
+        if ip link show "$interface" > /dev/null 2>&1; then
             echo "$(date +'%Y-%m-%d %H:%M:%S') $interface interface exists, setting MAC address..." >> "$log_file"
             ip link set "$interface" down
             ip link set "$interface" address "$mac_address"
@@ -35,6 +52,12 @@ wait_and_set_mac() {
     echo "$(date +'%Y-%m-%d %H:%M:%S') Interface $interface not found after $max_attempts attempts" >> "$log_file"
     return 1
 }
+
+# Wait for valid MAC addresses
+if ! wait_for_mac_addresses; then
+    echo "$(date +'%Y-%m-%d %H:%M:%S') Failed to obtain valid MAC addresses, exiting" >> "$log_file"
+    exit 1
+fi
 
 # Wait for eth0 and set its MAC address
 wait_and_set_mac "eth0" "$mac1"

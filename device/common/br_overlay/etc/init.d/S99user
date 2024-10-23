@@ -8,6 +8,8 @@ export SYSTEMPATH=/mnt/system/
 
 case "$1" in
   start)
+        echo "read efuse..."
+        efuse_read_serial
         echo "init mpp system..."
         if [ -d $SYSTEMPATH/ko ]; then
                 sh $SYSTEMPATH/ko/loadsystemko.sh
