@@ -66,7 +66,15 @@ int servo_write_command(ServoCommand *cmd) {
         return -1; // Error: data too long
     }
 
-    return servo_write(cmd->id, cmd->address, cmd->data, cmd->length);
+    int result;
+    for (int retry = 0; retry < 10; retry++) {
+        result = servo_write(cmd->id, cmd->address, cmd->data, cmd->length);
+        if (result == 0) {
+            break;
+        }
+    }
+
+    return result;
 }
 
 int servo_reg_write(uint8_t id, uint8_t address, uint8_t *data, uint8_t length) {
@@ -328,31 +336,28 @@ int servo_read(uint8_t id, uint8_t address, uint8_t length, uint8_t *data) {
     };
     packet[7] = calculate_checksum(packet, 8);
 
-    if (send_packet(packet, 8) != 8) {
-        return -1;  // Failed to send packet
-    }
-
-    // Receive response
-    uint8_t response[256];  // Adjust size if needed
-    int received = receive_packet(response, sizeof(response));
-
-    if (received == -1) {
+    int result = -1;
+    for (int retry = 0; retry < 10; retry++) {
         if (send_packet(packet, 8) != 8) {
-            return -1;  // Failed to send packet
+            continue;  // Try again if send fails
         }
-        received = receive_packet(response, sizeof(response));  // attempt 1 more time
+
+        // Receive response
+        uint8_t response[256];  // Adjust size if needed
+        int received = receive_packet(response, sizeof(response));
+
+        if (received < 6 || response[2] != id) {
+            continue;  // Try again if response is invalid
+        }
+
+        // Copy received data to output buffer
+        memcpy(data, &response[5], length);
+
+        result = 0;  // Success
+        break;
     }
 
-    if (received < 6 || response[2] != id) {
-        return -1;  // Invalid response
-    }
-
-    // TODO: do something with bit 4  || response[4] != 0 => update error in struct?
-
-    // Copy received data to output buffer
-    memcpy(data, &response[5], length);
-
-    return 0;  // Success
+    return result;
 }
 
 int servo_read_command(ServoCommand *cmd, uint8_t *response) {

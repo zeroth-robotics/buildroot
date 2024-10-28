@@ -295,19 +295,21 @@ void prvCmdQuRunTask(void *pvParameters)
                     volatile ServoCommand *shared_servo_command = (volatile ServoCommand *)CVIMMAP_SHMEM_ADDR;
                     ServoCommand local_command;
 
+					int result = -1;
+
                     inv_dcache_range(shared_servo_command, sizeof(ServoCommand));
                     memcpy(&local_command, (void *)shared_servo_command, sizeof(ServoCommand));
 					// printf("local_command.id: %d, address: %d, length: %d; data[0]: %d, data[1]: %d, data[2]: %d, data[3]: %d, data[4]: %d, data[5]: %d\n", local_command.id, local_command.address, local_command.length, local_command.data[0], local_command.data[1], local_command.data[2], local_command.data[3], local_command.data[4], local_command.data[5]);
 
 					if (xSemaphoreTake(g_servo_data_mutex, portMAX_DELAY) == pdTRUE) {
-						servo_write_command(&local_command);
+						result = servo_write_command(&local_command);
 						vTaskDelay(1);
 						xSemaphoreGive(g_servo_data_mutex);
 					}
 
                     // Send back the result
-                    // *(volatile int *)CVIMMAP_SHMEM_ADDR = result;
-                    // flush_dcache_range(CVIMMAP_SHMEM_ADDR, sizeof(int));
+                    *(volatile int *)CVIMMAP_SHMEM_ADDR = result;
+                    flush_dcache_range(CVIMMAP_SHMEM_ADDR, sizeof(int));
 
                     rtos_cmdq.cmd_id = SYS_CMD_SERVO_WRITE;
                     rtos_cmdq.resv.valid.rtos_valid = 1;
