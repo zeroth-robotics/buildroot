@@ -5,6 +5,9 @@ log_file="/var/log/auto.sh.log"
 
 echo "start auto.sh" > "$log_file"
 
+duo-pinmux -w B11/IIC1_SDA
+duo-pinmux -w B12/IIC1_SCL
+
 # Start sts_server
 echo "$(date +'%Y-%m-%d %H:%M:%S') Starting sts_server..." >> "$log_file"
 nohup /usr/local/bin/sts_server > /var/log/sts_server.log 2>&1 &
