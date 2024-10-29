@@ -337,7 +337,7 @@ int servo_read(uint8_t id, uint8_t address, uint8_t length, uint8_t *data) {
     packet[7] = calculate_checksum(packet, 8);
 
     int result = -1;
-    for (int retry = 0; retry < 10; retry++) {
+    for (int retry = 0; retry < 3; retry++) {
         if (send_packet(packet, 8) != 8) {
             continue;  // Try again if send fails
         }
