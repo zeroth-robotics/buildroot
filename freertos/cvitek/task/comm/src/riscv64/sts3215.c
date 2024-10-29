@@ -79,7 +79,7 @@ int servo_write_command(ServoCommand *cmd) {
 
 int servo_reg_write(uint8_t id, uint8_t address, uint8_t *data, uint8_t length) {
     uint8_t packet[256];  // Adjust size if needed
-    uint8_t packet_lentgth = length + 5;
+    uint8_t packet_length = length + 5;
     
     packet[0] = SERVO_START_BYTE;
     packet[1] = SERVO_START_BYTE;
@@ -360,7 +360,7 @@ int servo_read(uint8_t id, uint8_t address, uint8_t length, uint8_t *data, int r
     return result;
 }
 
-int servo_read_command(ServoCommand *cmd, uint8_t *response) {
+int servo_read_command(ServoCommand *cmd, uint8_t *response, int retry_count) {
     if (cmd->length > MAX_SERVO_COMMAND_DATA) {
         return -1; // Error: requested data length too long
     }
@@ -373,7 +373,7 @@ int servo_read_command(ServoCommand *cmd, uint8_t *response) {
     response[4] = 0; // Initialize status as 0 (success)
 
     // Read data from servo
-    int result = servo_read(cmd->id, cmd->address, cmd->length, &response[5], 3);
+    int result = servo_read(cmd->id, cmd->address, cmd->length, &response[5], retry_count);
 
     if (result != 0) {
         response[4] = 1; // Set status to 1 (error)
