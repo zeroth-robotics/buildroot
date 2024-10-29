@@ -79,7 +79,7 @@ int servo_write_command(ServoCommand *cmd) {
 
 int servo_reg_write(uint8_t id, uint8_t address, uint8_t *data, uint8_t length) {
     uint8_t packet[256];  // Adjust size if needed
-    uint8_t packet_lentgth = length + 5;
+    uint8_t packet_length = length + 5;
     
     packet[0] = SERVO_START_BYTE;
     packet[1] = SERVO_START_BYTE;
