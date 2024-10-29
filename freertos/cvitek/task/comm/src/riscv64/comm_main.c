@@ -327,7 +327,7 @@ void prvCmdQuRunTask(void *pvParameters)
 
 					if (xSemaphoreTake(g_servo_data_mutex, portMAX_DELAY) == pdTRUE) {
 						uint8_t response[256] = {0};  // Use the full 256-byte buffer
-						int result = servo_read_command(&local_command, response);
+						int result = servo_read_command(&local_command, response, 3);
 
 						// Write the response to shared memory
 						memcpy((void *)shared_data, response, 256);
