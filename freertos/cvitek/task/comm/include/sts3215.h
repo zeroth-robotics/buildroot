@@ -86,6 +86,6 @@ uint8_t servo_read_voltage(uint8_t id);
 int servo_torque_on(uint8_t id);
 int servo_torque_off(uint8_t id);
 int servo_set_torque(uint8_t id, uint8_t torque_state);
-int16_t read_16bit_value(uint8_t id, uint8_t address);
+int16_t read_16bit_value(uint8_t id, uint8_t address, int retry_count);
 
 #endif // SERVO_DRIVER_H
