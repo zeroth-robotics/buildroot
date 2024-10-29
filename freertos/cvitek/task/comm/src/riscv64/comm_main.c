@@ -201,7 +201,7 @@ void prvServosRunTask(void *pvParameters)
 
             // Read position and status for all servos
             for (int servo = 0; servo < MAX_SERVOS; servo++) {
-                if (servo_read_position_and_status(servo + 1, &g_servo_data.servo[servo]) != 0) {
+                if (servo_read_position_and_status(servo + 1, &g_servo_data.servo[servo], 1) != 0) {
                     // Handle error if needed
                     // printf("Error reading position and status for servo %d\n", servo + 1);
                 }
@@ -210,7 +210,7 @@ void prvServosRunTask(void *pvParameters)
             // Full read every 0.5 seconds
             if ((currentTime - xLastFullReadTime) >= xFullReadInterval) {
                 for (int servo = 0; servo < MAX_SERVOS; servo++) {
-                    if (servo_read_info(servo + 1, &g_servo_data.servo[servo]) != 0) {
+                    if (servo_read_info(servo + 1, &g_servo_data.servo[servo], 1) != 0) {
                         // Handle error if needed
                         // printf("Error reading full info for servo %d\n", servo + 1);
                     }
