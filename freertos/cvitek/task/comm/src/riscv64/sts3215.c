@@ -66,7 +66,15 @@ int servo_write_command(ServoCommand *cmd) {
         return -1; // Error: data too long
     }
 
-    return servo_write(cmd->id, cmd->address, cmd->data, cmd->length);
+    int result;
+    for (int retry = 0; retry < 10; retry++) {
+        result = servo_write(cmd->id, cmd->address, cmd->data, cmd->length);
+        if (result == 0) {
+            break;
+        }
+    }
+
+    return result;
 }
 
 int servo_reg_write(uint8_t id, uint8_t address, uint8_t *data, uint8_t length) {
@@ -249,17 +257,17 @@ int servo_move_multiple_sync(uint8_t *ids, int16_t *positions, uint16_t *times, 
     return 0;  // Success
 }
 
-int16_t read_16bit_value(uint8_t id, uint8_t address) {
+int16_t read_16bit_value(uint8_t id, uint8_t address, int retry_count) {
     uint8_t data[2];
-    if (servo_read(id, address, 2, data) != 0) {
+    if (servo_read(id, address, 2, data, retry_count) != 0) {
         return -1;  // Error
     }
     return (int16_t)((data[1] << 8) | data[0]);
 }
 
-int16_t servo_read_position_and_status(uint8_t id, ServoInfo *info) {
+int16_t servo_read_position_and_status(uint8_t id, ServoInfo *info, int retry_count) {
     uint8_t data[6];
-    if (servo_read(id, SERVO_ADDR_CURRENT_POSITION, 6, data) != 0) {
+    if (servo_read(id, SERVO_ADDR_CURRENT_POSITION, 6, data, retry_count) != 0) {
         return -1;  // Error
     }
 
@@ -270,9 +278,9 @@ int16_t servo_read_position_and_status(uint8_t id, ServoInfo *info) {
     return 0;  // Success
 }
 
-int servo_read_info(uint8_t id, ServoInfo *info) {
+int servo_read_info(uint8_t id, ServoInfo *info, int retry_count) {
     uint8_t data[30];
-    if (servo_read(id, 0x28, 30, data) != 0) {
+    if (servo_read(id, 0x28, 30, data, retry_count) != 0) {
         return -1;  // Error
     }
 
@@ -299,24 +307,24 @@ int servo_read_info(uint8_t id, ServoInfo *info) {
 }
 
 uint16_t servo_read_current(uint8_t id) {
-    int16_t current = read_16bit_value(id, SERVO_ADDR_CURRENT_CURRENT);
+    int16_t current = read_16bit_value(id, SERVO_ADDR_CURRENT_CURRENT, 3);
     if (current < 0) return 0;
     return (uint16_t)current * 65;  // Convert to mA (6.5mA * 10)
 }
 
 int16_t servo_read_load(uint8_t id) {
-    return read_16bit_value(id, SERVO_ADDR_CURRENT_LOAD);
+    return read_16bit_value(id, SERVO_ADDR_CURRENT_LOAD, 3);
 }
 
 uint8_t servo_read_voltage(uint8_t id) {
     uint8_t voltage;
-    if (servo_read(id, SERVO_ADDR_CURRENT_VOLTAGE, 1, &voltage) != 0) {
+    if (servo_read(id, SERVO_ADDR_CURRENT_VOLTAGE, 1, &voltage, 3) != 0) {
         return 0;  // Error
     }
     return voltage;
 }
 
-int servo_read(uint8_t id, uint8_t address, uint8_t length, uint8_t *data) {
+int servo_read(uint8_t id, uint8_t address, uint8_t length, uint8_t *data, int retry_count) {
     uint8_t packet[8] = {
         SERVO_START_BYTE, SERVO_START_BYTE,
         id,
@@ -328,34 +336,31 @@ int servo_read(uint8_t id, uint8_t address, uint8_t length, uint8_t *data) {
     };
     packet[7] = calculate_checksum(packet, 8);
 
-    if (send_packet(packet, 8) != 8) {
-        return -1;  // Failed to send packet
-    }
-
-    // Receive response
-    uint8_t response[256];  // Adjust size if needed
-    int received = receive_packet(response, sizeof(response));
-
-    if (received == -1) {
+    int result = -1;
+    for (int retry = 0; retry < retry_count; retry++) {
         if (send_packet(packet, 8) != 8) {
-            return -1;  // Failed to send packet
+            continue;  // Try again if send fails
         }
-        received = receive_packet(response, sizeof(response));  // attempt 1 more time
+
+        // Receive response
+        uint8_t response[256];  // Adjust size if needed
+        int received = receive_packet(response, sizeof(response));
+
+        if (received < 6 || response[2] != id) {
+            continue;  // Try again if response is invalid
+        }
+
+        // Copy received data to output buffer
+        memcpy(data, &response[5], length);
+
+        result = 0;  // Success
+        break;
     }
 
-    if (received < 6 || response[2] != id) {
-        return -1;  // Invalid response
-    }
-
-    // TODO: do something with bit 4  || response[4] != 0 => update error in struct?
-
-    // Copy received data to output buffer
-    memcpy(data, &response[5], length);
-
-    return 0;  // Success
+    return result;
 }
 
-int servo_read_command(ServoCommand *cmd, uint8_t *response) {
+int servo_read_command(ServoCommand *cmd, uint8_t *response, int retry_count) {
     if (cmd->length > MAX_SERVO_COMMAND_DATA) {
         return -1; // Error: requested data length too long
     }
@@ -368,7 +373,7 @@ int servo_read_command(ServoCommand *cmd, uint8_t *response) {
     response[4] = 0; // Initialize status as 0 (success)
 
     // Read data from servo
-    int result = servo_read(cmd->id, cmd->address, cmd->length, &response[5]);
+    int result = servo_read(cmd->id, cmd->address, cmd->length, &response[5], retry_count);
 
     if (result != 0) {
         response[4] = 1; // Set status to 1 (error)

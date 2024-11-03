@@ -26,7 +26,7 @@ function get_toolchain()
   if [ ! -d host-tools ]; then
     print_info "Toolchain does not exist, download it now..."
 
-    toolchain_url="https://sophon-file.sophon.cn/sophon-prod-s3/drive/23/03/07/16/host-tools.tar.gz"
+    toolchain_url="http://kscale.ai/milkv/host-tools.tar.gz"
     echo "toolchain_url: ${toolchain_url}"
     toolchain_file=${toolchain_url##*/}
     echo "toolchain_file: ${toolchain_file}"

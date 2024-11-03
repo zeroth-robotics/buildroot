@@ -66,8 +66,8 @@ typedef struct {
 // Function prototypes
 void servo_init(void);
 int servo_ping(uint8_t id);
-int servo_read(uint8_t id, uint8_t address, uint8_t length, uint8_t *data);
-int servo_read_command(ServoCommand *cmd, uint8_t *data);
+int servo_read(uint8_t id, uint8_t address, uint8_t length, uint8_t *data, int retry_count);
+int servo_read_command(ServoCommand *cmd, uint8_t *data, int retry_count);
 int servo_write(uint8_t id, uint8_t address, uint8_t *data, uint8_t length);
 int servo_write_command(ServoCommand *cmd);
 int servo_reg_write(uint8_t id, uint8_t address, uint8_t *data, uint8_t length);
@@ -86,6 +86,6 @@ uint8_t servo_read_voltage(uint8_t id);
 int servo_torque_on(uint8_t id);
 int servo_torque_off(uint8_t id);
 int servo_set_torque(uint8_t id, uint8_t torque_state);
-int16_t read_16bit_value(uint8_t id, uint8_t address);
+int16_t read_16bit_value(uint8_t id, uint8_t address, int retry_count);
 
 #endif // SERVO_DRIVER_H

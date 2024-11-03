@@ -221,7 +221,7 @@ void prvServosRunTask(void *pvParameters)
 
             // Read position and status for all servos
             for (int servo = 0; servo < MAX_SERVOS; servo++) {
-                if (servo_read_position_and_status(servo + 1, &g_servo_data.servo[servo]) != 0) {
+                if (servo_read_position_and_status(servo + 1, &g_servo_data.servo[servo], 1) != 0) {
                     // Handle error if needed
                     // printf("Error reading position and status for servo %d\n", servo + 1);
                 }
@@ -230,7 +230,7 @@ void prvServosRunTask(void *pvParameters)
             // Full read every second
             if ((currentTime - xLastFullReadTime) >= xFullReadInterval) {
                 for (int servo = 0; servo < MAX_SERVOS; servo++) {
-                    if (servo_read_info(servo + 1, &g_servo_data.servo[servo]) != 0) {
+                    if (servo_read_info(servo + 1, &g_servo_data.servo[servo], 1) != 0) {
                         // Handle error if needed
                         // printf("Error reading full info for servo %d\n", servo + 1);
                     }
@@ -315,19 +315,21 @@ void prvCmdQuRunTask(void *pvParameters)
                     volatile ServoCommand *shared_servo_command = (volatile ServoCommand *)CVIMMAP_SHMEM_ADDR;
                     ServoCommand local_command;
 
+					int result = -1;
+
                     inv_dcache_range(shared_servo_command, sizeof(ServoCommand));
                     memcpy(&local_command, (void *)shared_servo_command, sizeof(ServoCommand));
 					// printf("local_command.id: %d, address: %d, length: %d; data[0]: %d, data[1]: %d, data[2]: %d, data[3]: %d, data[4]: %d, data[5]: %d\n", local_command.id, local_command.address, local_command.length, local_command.data[0], local_command.data[1], local_command.data[2], local_command.data[3], local_command.data[4], local_command.data[5]);
 
 					if (xSemaphoreTake(g_servo_data_mutex, portMAX_DELAY) == pdTRUE) {
-						servo_write_command(&local_command);
+						result = servo_write_command(&local_command);
 						vTaskDelay(1);
 						xSemaphoreGive(g_servo_data_mutex);
 					}
 
                     // Send back the result
-                    // *(volatile int *)CVIMMAP_SHMEM_ADDR = result;
-                    // flush_dcache_range(CVIMMAP_SHMEM_ADDR, sizeof(int));
+                    *(volatile int *)CVIMMAP_SHMEM_ADDR = result;
+                    flush_dcache_range(CVIMMAP_SHMEM_ADDR, sizeof(int));
 
                     rtos_cmdq.cmd_id = SYS_CMD_SERVO_WRITE;
                     rtos_cmdq.resv.valid.rtos_valid = 1;
@@ -345,7 +347,7 @@ void prvCmdQuRunTask(void *pvParameters)
 
 					if (xSemaphoreTake(g_servo_data_mutex, portMAX_DELAY) == pdTRUE) {
 						uint8_t response[256] = {0};  // Use the full 256-byte buffer
-						int result = servo_read_command(&local_command, response);
+						int result = servo_read_command(&local_command, response, 3);
 
 						// Write the response to shared memory
 						memcpy((void *)shared_data, response, 256);
