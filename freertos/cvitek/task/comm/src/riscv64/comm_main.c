@@ -100,6 +100,14 @@ volatile ServoData g_servo_data = {
 };
 
 volatile int g_servo_readout_enabled = 1;
+volatile int g_servo_movement_enabled = 0;
+volatile ServoMultipleWriteCommand g_last_movement_command = {
+	.ids = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16},
+	.positions = {2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048},
+	.times = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	.speeds = {100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100},
+	.only_write_positions = 0
+};
 
 SemaphoreHandle_t g_servo_data_mutex;
 
@@ -183,12 +191,12 @@ void prvServosRunTask(void *pvParameters)
 	g_servo_data_mutex = xSemaphoreCreateMutex();
  	
 	TickType_t xLastWakeTime;
-    const TickType_t xFrequency = pdMS_TO_TICKS(4); // 4ms interval
+    const TickType_t xFrequency = pdMS_TO_TICKS(8); // 8ms interval, 125Hz
     uint32_t tick_count = 0;
 
 	xLastWakeTime = xTaskGetTickCount();
 
-        const TickType_t xFullReadInterval = pdMS_TO_TICKS(1000); // 1000ms = 1 second
+    const TickType_t xFullReadInterval = pdMS_TO_TICKS(1000); // 1000ms = 1 second
 	TickType_t xLastFullReadTime = xTaskGetTickCount();
 
 	for (;;) {
@@ -199,6 +207,18 @@ void prvServosRunTask(void *pvParameters)
         if (g_servo_readout_enabled && (xSemaphoreTake(g_servo_data_mutex, 10) == pdTRUE)) {
             g_servo_data.task_run_count++;
 
+            // Execute movement command if enabled
+            if (g_servo_movement_enabled) {
+                servo_move_multiple_sync(
+                    g_last_movement_command.ids,
+                    g_last_movement_command.positions,
+                    g_last_movement_command.times,
+                    g_last_movement_command.speeds,
+                    MAX_SERVOS,
+                    g_last_movement_command.only_write_positions
+                );
+            }
+
             // Read position and status for all servos
             for (int servo = 0; servo < MAX_SERVOS; servo++) {
                 if (servo_read_position_and_status(servo + 1, &g_servo_data.servo[servo]) != 0) {
@@ -207,7 +227,7 @@ void prvServosRunTask(void *pvParameters)
                 }
             }
 
-            // Full read every 0.5 seconds
+            // Full read every second
             if ((currentTime - xLastFullReadTime) >= xFullReadInterval) {
                 for (int servo = 0; servo < MAX_SERVOS; servo++) {
                     if (servo_read_info(servo + 1, &g_servo_data.servo[servo]) != 0) {
@@ -315,7 +335,7 @@ void prvCmdQuRunTask(void *pvParameters)
                     goto send_label;
                 }
                 break;
-				case SYS_CMD_SERVO_READ:
+			case SYS_CMD_SERVO_READ:
 				{
 					volatile ServoCommand *shared_servo_command = (volatile ServoCommand *)CVIMMAP_SHMEM_ADDR;
 					ServoCommand local_command;
@@ -356,24 +376,39 @@ void prvCmdQuRunTask(void *pvParameters)
                     goto send_label;
 				}
 				break;
+			case SYS_CMD_SERVO_MOVEMENT_ENABLE:
+				{
+					g_servo_movement_enabled = 1;
+					rtos_cmdq.resv.valid.rtos_valid = 1;
+					rtos_cmdq.resv.valid.linux_valid = 0;
+					goto send_label;
+				}
+				break;
+			case SYS_CMD_SERVO_MOVEMENT_DISABLE:
+				{
+					g_servo_movement_enabled = 0;
+					rtos_cmdq.resv.valid.rtos_valid = 1;
+					rtos_cmdq.resv.valid.linux_valid = 0;
+					goto send_label;
+				}
+				break;
 			case SYS_CMD_SERVO_WRITE_MULTIPLE:
 				{
 					volatile ServoMultipleWriteCommand *shared_command = (volatile ServoMultipleWriteCommand *)CVIMMAP_SHMEM_ADDR;
-					ServoMultipleWriteCommand local_command;
 
 					inv_dcache_range(shared_command, sizeof(ServoMultipleWriteCommand));
-					memcpy(&local_command, (void *)shared_command, sizeof(ServoMultipleWriteCommand));
-
+					
 					if (xSemaphoreTake(g_servo_data_mutex, portMAX_DELAY) == pdTRUE) {
-						int result = servo_move_multiple_sync(local_command.ids, local_command.positions, 
-															local_command.times, local_command.speeds, MAX_SERVOS, local_command.only_write_positions);
-						
-						// Write the result back to shared memory
-						*(volatile int *)CVIMMAP_SHMEM_ADDR = result;
-						flush_dcache_range(CVIMMAP_SHMEM_ADDR, 4);
-
+						// Just store the command for later execution
+						memcpy((void *)&g_last_movement_command, (void *)shared_command, sizeof(ServoMultipleWriteCommand));
+						g_servo_movement_enabled = 1;  // Enable movement execution
 						xSemaphoreGive(g_servo_data_mutex);
 					}
+
+					// Return success
+					*(volatile int *)CVIMMAP_SHMEM_ADDR = 0;
+					flush_dcache_range(CVIMMAP_SHMEM_ADDR, 4);
+
 					rtos_cmdq.cmd_id = SYS_CMD_SERVO_WRITE_MULTIPLE;
 					rtos_cmdq.resv.valid.rtos_valid = 1;
 					rtos_cmdq.resv.valid.linux_valid = 0;
