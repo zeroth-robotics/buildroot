@@ -49,12 +49,13 @@ build_milkv_duo_image:
     # Copy artifacts to buildroot overlay
     - cp build-cviwrapper_artifacts/runtime/firmware/cviwrapper/libcviwrapper.so device/common/br_overlay/lib/
     - cp build-servo_artifacts/runtime/firmware/sts3215/libsts3215.so device/common/br_overlay/lib/
+    - echo "$CI_COMMIT_TAG" > device/common/br_overlay/etc/0OS-version
     - chmod +x build-runtime_artifacts/runtime/target/riscv64gc-unknown-linux-musl/release/*
     - cp build-runtime_artifacts/runtime/target/riscv64gc-unknown-linux-musl/release/* device/common/br_overlay/usr/local/bin/ || true
     - cp build-efuse_artifacts/runtime/firmware/efuse/efuse_read_serial device/common/br_overlay/usr/local/bin/
     - bash ./build.sh milkv-duos-sd
     - cp $CI_PROJECT_DIR/out/*.img $CI_PROJECT_DIR/
-    - cd $CI_PROJECT_DIR && tar -cvf milkv-duos-sd.tar *.img && xz -z milkv-duos-sd.tar
+    - cd $CI_PROJECT_DIR && tar -cvf milkv-duos-sd-${CI_COMMIT_TAG}.tar *.img && xz -z milkv-duos-sd-${CI_COMMIT_TAG}.tar
     - echo "path=$(ls $CI_PROJECT_DIR/*.tar.xz)" >> build.env
     - sha256sum *.tar.xz >> milk-v.hash
   artifacts:
