@@ -403,7 +403,6 @@ void prvCmdQuRunTask(void *pvParameters)
 					if (xSemaphoreTake(g_servo_data_mutex, portMAX_DELAY) == pdTRUE) {
 						// Just store the command for later execution
 						memcpy((void *)&g_last_movement_command, (void *)shared_command, sizeof(ServoMultipleWriteCommand));
-						g_servo_movement_enabled = 1;  // Enable movement execution
 						xSemaphoreGive(g_servo_data_mutex);
 					}
 
