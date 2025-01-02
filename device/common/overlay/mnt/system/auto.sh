@@ -10,7 +10,7 @@ duo-pinmux -w B12/IIC1_SCL
 
 # Start sts_server
 echo "$(date +'%Y-%m-%d %H:%M:%S') Starting sts_server..." >> "$log_file"
-nohup /usr/local/bin/sts_server > /var/log/sts_server.log 2>&1 &
+nohup /usr/local/bin/kos --log --log-level trace > /var/log/sts_server.log 2>&1 &
 
 # Function to wait for valid MAC addresses
 wait_for_mac_addresses() {
