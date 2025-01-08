@@ -5,6 +5,11 @@ log_file="/var/log/auto.sh.log"
 
 echo "start auto.sh" > "$log_file"
 
+cd /root/alpine
+mount -t proc /proc proc/
+mount -t sysfs /sys sys/
+mount -t devtmpfs /dev dev/
+
 duo-pinmux -w B11/IIC1_SDA
 duo-pinmux -w B12/IIC1_SCL
 

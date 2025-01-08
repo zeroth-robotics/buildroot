@@ -47,6 +47,11 @@ build_milkv_duo_image:
     - download_artifacts "build-efuse"
     - download_artifacts "build-kos"
 
+    # Copy alpine rootfs
+    - wget http://kscale.ai/milkv/alpine.tar.gz
+    - mkdir -p device/common/br_overlay/root/
+    - tar -xvf alpine.tar.gz -C device/common/br_overlay/root/
+
     # Copy artifacts to buildroot overlay
     - cp build-cviwrapper_artifacts/runtime/firmware/cviwrapper/libcviwrapper.so device/common/br_overlay/lib/
     - cp build-servo_artifacts/runtime/firmware/sts3215/libsts3215.so device/common/br_overlay/lib/
