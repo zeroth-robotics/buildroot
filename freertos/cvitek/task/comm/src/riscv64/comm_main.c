@@ -390,6 +390,19 @@ void prvCmdQuRunTask(void *pvParameters)
 					goto send_label;
 				}
 				break;
+			case SYS_CMD_SET_ACTIVE_SERVO_LIST:
+				{
+					volatile ActiveServoList *shared_active_servo_list = (volatile ActiveServoList *)CVIMMAP_SHMEM_ADDR;
+
+					inv_dcache_range(shared_active_servo_list, sizeof(ActiveServoList));
+					memcpy((void *)&g_active_servo_list, (void *)shared_active_servo_list, sizeof(g_active_servo_list));
+
+					rtos_cmdq.cmd_id = SYS_CMD_SET_ACTIVE_SERVO_LIST;
+					rtos_cmdq.resv.valid.rtos_valid = 1;
+					rtos_cmdq.resv.valid.linux_valid = 0;
+					goto send_label;
+				}
+				break;
 			default:
 send_label:
 				/* used to send command to linux*/
