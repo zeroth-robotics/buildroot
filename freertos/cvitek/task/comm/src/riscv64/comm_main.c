@@ -221,6 +221,7 @@ void prvServosRunTask(void *pvParameters)
             // Read position and status for all servos
             for (int i = 0; i < g_active_servo_list.len; i++) {
                 uint8_t id = g_active_servo_list.servo_id[i];
+				g_read_servo_buffer.servos[i].id = id;
 
                 if (servo_read_position_and_status(id, &g_read_servo_buffer.servos[i], 5) != 0) {
                     g_read_servo_buffer.fault_count++;
@@ -332,7 +333,7 @@ void prvCmdQuRunTask(void *pvParameters)
 					// printf("local_command.id: %d, address: %d, length: %d; data[0]: %d, data[1]: %d, data[2]: %d, data[3]: %d, data[4]: %d, data[5]: %d\n", local_command.id, local_command.address, local_command.length, local_command.data[0], local_command.data[1], local_command.data[2], local_command.data[3], local_command.data[4], local_command.data[5]);
 
 					if (xSemaphoreTake(g_servo_data_mutex, portMAX_DELAY) == pdTRUE) {
-						result = servo_write_command(&local_command);
+						result = servo_write_command(&local_command, 5);
 						vTaskDelay(1);
 						xSemaphoreGive(g_servo_data_mutex);
 					}
@@ -396,6 +397,7 @@ void prvCmdQuRunTask(void *pvParameters)
 
 					inv_dcache_range(shared_active_servo_list, sizeof(ActiveServoList));
 					memcpy((void *)&g_active_servo_list, (void *)shared_active_servo_list, sizeof(g_active_servo_list));
+					memset((void *)g_read_servo_buffer.servos, 0, sizeof(g_read_servo_buffer.servos));
 
 					rtos_cmdq.cmd_id = SYS_CMD_SET_ACTIVE_SERVO_LIST;
 					rtos_cmdq.resv.valid.rtos_valid = 1;

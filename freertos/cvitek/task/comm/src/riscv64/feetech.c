@@ -66,7 +66,7 @@ int servo_write(uint8_t id, uint8_t address, uint8_t *data, uint8_t length) {
 
 int servo_sync_write(uint8_t *data, size_t size) {
     uint8_t packet[256];  // Changed from MAX_SHMEM_DATA/2 to fixed size
-    uint8_t packet_length = size + 4;
+    uint8_t packet_length = size + 6;
     
     packet[0] = SERVO_START_BYTE;
     packet[1] = SERVO_START_BYTE;
@@ -167,7 +167,6 @@ int servo_read_info(uint8_t id, ServoInfo *info, int retry_count) {
         return -1;  // Error
     }
 
-    info->id = id;
     info->torque_switch = data[0];
     info->acceleration = data[1];
     info->target_location = (int16_t)((data[3] << 8) | data[2]);
