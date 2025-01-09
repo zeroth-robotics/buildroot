@@ -167,6 +167,7 @@ int servo_read_info(uint8_t id, ServoInfo *info, int retry_count) {
         return -1;  // Error
     }
 
+    info->id = id;
     info->torque_switch = data[0];
     info->acceleration = data[1];
     info->target_location = (int16_t)((data[3] << 8) | data[2]);
