@@ -1,8 +1,12 @@
 #include "uart.h"
 #include "string.h"
+#include "feetech.h"
 
 #define SERVO_START_BYTE 0xFF
 #define SERVO_BROADCAST_ID 0xFE
+
+// Add external reference to the global buffer
+extern volatile ServoInfoBuffer g_read_servo_buffer;
 
 static uint8_t checksum(uint8_t *packet, size_t length) {
     uint16_t sum = 0;
@@ -42,7 +46,7 @@ int servo_write(uint8_t id, uint8_t address, uint8_t *data, uint8_t length) {
     packet[4] = SERVO_CMD_WRITE;
     packet[5] = address;
     memcpy(&packet[6], data, length);
-    packet[packet_length - 1] = calculate_checksum(packet, packet_length);
+    packet[packet_length - 1] = checksum(packet, packet_length);
     
     if (send_packet(packet, packet_length) != packet_length) {
         return -1;
@@ -61,7 +65,7 @@ int servo_write(uint8_t id, uint8_t address, uint8_t *data, uint8_t length) {
 }
 
 int servo_sync_write(uint8_t *data, size_t size) {
-    uint8_t packet[MAX_SHMEM_DATA / 2];  // Adjust size if needed
+    uint8_t packet[256];  // Changed from MAX_SHMEM_DATA/2 to fixed size
     uint8_t packet_length = size + 4;
     
     packet[0] = SERVO_START_BYTE;
@@ -70,7 +74,7 @@ int servo_sync_write(uint8_t *data, size_t size) {
     packet[3] = size + 2;  // data size + 2 (instruction + checksum)
     packet[4] = SERVO_CMD_SYNC_WRITE;
     memcpy(&packet[5], data, size);
-    packet[packet_length - 1] = calculate_checksum(packet, packet_length);
+    packet[packet_length - 1] = checksum(packet, packet_length);
     
     if (send_packet(packet, packet_length) != packet_length) {
         return -1;
@@ -89,7 +93,7 @@ int servo_read(uint8_t id, uint8_t address, uint8_t length, uint8_t *data, int r
         length,
         0  // Checksum (to be calculated)
     };
-    packet[7] = calculate_checksum(packet, 8);
+    packet[7] = checksum(packet, 8);
 
     int result = -1;
     for (int retry = 0; retry < retry_count; retry++) {
@@ -139,7 +143,7 @@ int servo_read_command(ServoCommand *cmd, uint8_t *response, int retry_count) {
     }
 
     // Calculate and add checksum
-    response[response[3] + 3] = calculate_checksum(response, response[3] + 4);
+    response[response[3] + 3] = checksum(response, response[3] + 4);
 
     return response[3] + 4; // Return total length of response packet
 }

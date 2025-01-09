@@ -1,6 +1,7 @@
 #ifndef __HAL_UART_DW_HEADER__
 #define __HAL_UART_DW_HEADER__
 #include <stdint.h>
+#include <stddef.h>
 //#include "linux/types.h"
 
 #define thr rbr
