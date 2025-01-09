@@ -12,6 +12,7 @@ build_milkv_duo_image:
   stage: build
   only:
     - tags
+    - feetechv2
   before_script:
     - apt-get update -qq
     - ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
@@ -27,7 +28,7 @@ build_milkv_duo_image:
     # Fetch the latest successful pipeline ID from the main branch
     - >
       PIPELINE_ID=$(curl --header "PRIVATE-TOKEN: $OPENLCH_PROJECT_TOKEN" 
-      "https://gitlab.kscale.ai/api/v4/projects/$OPENLCH_PROJECT_ID/pipelines?ref=main&status=success&order_by=id&sort=desc&per_page=1" 
+      "https://gitlab.kscale.ai/api/v4/projects/$OPENLCH_PROJECT_ID/pipelines?ref=feetech-v2&status=success&order_by=id&sort=desc&per_page=1" 
       | jq '.[0].id')
 
     # Function to download artifacts for a specific job
@@ -42,7 +43,6 @@ build_milkv_duo_image:
 
     # Download artifacts for each job
     - download_artifacts "build-cviwrapper"
-    - download_artifacts "build-runtime"
     - download_artifacts "build-servo"
     - download_artifacts "build-efuse"
     - download_artifacts "build-kos"
@@ -56,8 +56,6 @@ build_milkv_duo_image:
     - cp build-cviwrapper_artifacts/runtime/firmware/cviwrapper/libcviwrapper.so device/common/br_overlay/lib/
     - cp build-servo_artifacts/runtime/firmware/sts3215/libsts3215.so device/common/br_overlay/lib/
     - echo "$CI_COMMIT_TAG" > device/common/br_overlay/etc/0OS-version
-    - chmod +x build-runtime_artifacts/runtime/target/riscv64gc-unknown-linux-musl/release/*
-    - cp build-runtime_artifacts/runtime/target/riscv64gc-unknown-linux-musl/release/* device/common/br_overlay/usr/local/bin/ || true
     - cp build-kos_artifacts/kos/target/riscv64gc-unknown-linux-musl/release/* device/common/br_overlay/usr/local/bin/ || true
     - cp build-efuse_artifacts/runtime/firmware/efuse/efuse_read_serial device/common/br_overlay/usr/local/bin/
     - bash ./build.sh milkv-duos-sd
