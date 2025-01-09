@@ -54,7 +54,7 @@ build_milkv_duo_image:
 
     # Copy artifacts to buildroot overlay
     - cp build-cviwrapper_artifacts/runtime/firmware/cviwrapper/libcviwrapper.so device/common/br_overlay/lib/
-    - cp build-servo_artifacts/runtime/firmware/sts3215/libsts3215.so device/common/br_overlay/lib/
+    - cp build-servo_artifacts/runtime/firmware/feetech/libfeetech.so device/common/br_overlay/lib/
     - echo "$CI_COMMIT_TAG" > device/common/br_overlay/etc/0OS-version
     - cp build-kos_artifacts/kos/target/riscv64gc-unknown-linux-musl/release/* device/common/br_overlay/usr/local/bin/ || true
     - cp build-efuse_artifacts/runtime/firmware/efuse/efuse_read_serial device/common/br_overlay/usr/local/bin/
