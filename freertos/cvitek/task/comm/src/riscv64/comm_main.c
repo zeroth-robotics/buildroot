@@ -357,6 +357,7 @@ void prvCmdQuRunTask(void *pvParameters)
 						g_read_servo_buffer.loop_count = 0; // Reset the counter after reading
 						g_read_servo_buffer.read_count = 0;
 						g_read_servo_buffer.fault_count = 0;
+						g_read_servo_buffer.retry_count = 0;
 						g_read_servo_buffer.last_read_ms = pdTICKS_TO_MS(xTaskGetTickCount());
                         xSemaphoreGive(g_servo_data_mutex);
                     }
