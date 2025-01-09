@@ -19,7 +19,7 @@
 #include "comm.h"
 #include "cvi_spinlock.h"
 #include "uart.h"
-#include "sts3215.h"
+#include "feetech.h"
 #include "cv181x_reg_fmux_gpio.h"
 // #include "hal_uart_dw.h"
 
@@ -54,11 +54,6 @@ typedef struct _TASK_CTX_S {
 	u8            queLength;
 	QueueHandle_t queHandle;
 } TASK_CTX_S;
-
-typedef struct {
-	ServoInfo servo[MAX_SERVOS];
-	uint32_t task_run_count;
-} ServoData;
 
 /****************************************************************************
  * Function prototypes
@@ -95,21 +90,34 @@ volatile struct mailbox_set_register *mbox_reg;
 volatile struct mailbox_done_register *mbox_done_reg;
 volatile unsigned long *mailbox_context; // mailbox buffer context is 64 Bytess
 
-volatile ServoData g_servo_data = {
-	.task_run_count = 0,
+volatile BroadcastCommand g_broadcast_command = {
+	.data_length = 0,
+	.data = {0},
 };
 
-volatile int g_servo_readout_enabled = 1;
-volatile int g_servo_movement_enabled = 0;
-volatile ServoMultipleWriteCommand g_last_movement_command = {
-	.ids = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16},
-	.positions = {2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048},
-	.times = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-	.speeds = {100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100},
-	.only_write_positions = 0
+volatile ServoInfoBuffer g_read_servo_buffer = {
+	.retry_count = 0,
+	.read_count = 0,
+	.last_read_ms = 0,
+	.loop_count = 0,
+	.servos = {0},
+};
+
+volatile ActiveServoList g_active_servo_list = {
+	.len = 0,
+	.servo_id = {0},
 };
 
 SemaphoreHandle_t g_servo_data_mutex;
+
+static void is_servo_active(uint8_t id) {
+	for (int i = 0; i < g_active_servo_list.len; i++) {
+		if (g_active_servo_list.servo_id[i] == id) {
+			return 1;
+		}
+	}
+	return 0;
+}
 
 /****************************************************************************
  * Function definitions
@@ -204,39 +212,34 @@ void prvServosRunTask(void *pvParameters)
 
         TickType_t currentTime = xTaskGetTickCount();
 
-        if (g_servo_readout_enabled && (xSemaphoreTake(g_servo_data_mutex, 10) == pdTRUE)) {
-            g_servo_data.task_run_count++;
+        if (xSemaphoreTake(g_servo_data_mutex, 10) == pdTRUE) {
+            g_read_servo_buffer.loop_count++;
 
-            // Execute movement command if enabled
-            if (g_servo_movement_enabled) {
-                servo_move_multiple_sync(
-                    g_last_movement_command.ids,
-                    g_last_movement_command.positions,
-                    g_last_movement_command.times,
-                    g_last_movement_command.speeds,
-                    MAX_SERVOS,
-                    g_last_movement_command.only_write_positions
-                );
-            }
+			// run broadcast command every loop cycle
+			servo_sync_write(g_broadcast_command.data, g_broadcast_command.data_length);
 
             // Read position and status for all servos
-            for (int servo = 0; servo < MAX_SERVOS; servo++) {
-                if (servo_read_position_and_status(servo + 1, &g_servo_data.servo[servo], 1) != 0) {
-                    // Handle error if needed
-                    // printf("Error reading position and status for servo %d\n", servo + 1);
+            for (int i = 0; i < g_active_servo_list.len; i++) {
+                uint8_t id = g_active_servo_list.servo_id[i];
+
+                if (servo_read_position_and_status(id, &g_read_servo_buffer.servos[i], 5) != 0) {
+                    g_read_servo_buffer.fault_count++;
+                } else {
+                    g_read_servo_buffer.read_count++;
+					g_read_servo_buffer.servos[i].last_read_ms = pdTICKS_TO_MS(xTaskGetTickCount());
                 }
             }
 
             // Full read every second
             if ((currentTime - xLastFullReadTime) >= xFullReadInterval) {
-                for (int servo = 0; servo < MAX_SERVOS; servo++) {
-                    if (servo_read_info(servo + 1, &g_servo_data.servo[servo], 1) != 0) {
-                        // Handle error if needed
-                        // printf("Error reading full info for servo %d\n", servo + 1);
-                    }
+                for (int i = 0; i < g_active_servo_list.len; i++) {
+                    uint8_t id = g_active_servo_list.servo_id[i];
+                    servo_read_info(id, &g_read_servo_buffer.servos[i], 1);
                 }
                 xLastFullReadTime = currentTime;
             }
+
+			g_read_servo_buffer.last_read_ms = pdTICKS_TO_MS(xTaskGetTickCount());
 
             xSemaphoreGive(g_servo_data_mutex);
         }
@@ -292,24 +295,31 @@ void prvCmdQuRunTask(void *pvParameters)
 					goto send_label;
 				}
 				break;
-			case SYS_CMD_GET_SERVO_VALUES:
-                {
-                    volatile ServoData *shared_servo_data = (volatile ServoData *)CVIMMAP_SHMEM_ADDR;
-                    
-                    if (xSemaphoreTake(g_servo_data_mutex, portMAX_DELAY) == pdTRUE) {
-                        memcpy((void *)shared_servo_data, (void *)&g_servo_data, sizeof(g_servo_data));
-						g_servo_data.task_run_count = 0; // Reset the counter after reading
-                        xSemaphoreGive(g_servo_data_mutex);
-                    }
+			case SYS_CMD_SERVO_READ:
+				{
+					volatile ServoCommand *shared_servo_command = (volatile ServoCommand *)CVIMMAP_SHMEM_ADDR;
+					ServoCommand local_command;
 
-                    flush_dcache_range(shared_servo_data, sizeof(g_servo_data));
+					inv_dcache_range(shared_servo_command, sizeof(ServoCommand));
+					memcpy(&local_command, (void *)shared_servo_command, sizeof(ServoCommand));
 
-                    rtos_cmdq.cmd_id = SYS_CMD_GET_SERVO_VALUES;
-                    rtos_cmdq.resv.valid.rtos_valid = 1;
-                    rtos_cmdq.resv.valid.linux_valid = 0;
-                    goto send_label;
-                }
-                break;
+					if (xSemaphoreTake(g_servo_data_mutex, portMAX_DELAY) == pdTRUE) {
+						uint8_t response[256] = {0};  // Use the full 256-byte buffer
+						int result = servo_read_command(&local_command, response, 3);
+
+						// Write the response to shared memory
+						memcpy((void *)shared_data, response, 256);
+						flush_dcache_range(shared_data, 256);
+
+						xSemaphoreGive(g_servo_data_mutex);
+					}
+
+					rtos_cmdq.cmd_id = SYS_CMD_SERVO_READ;
+					rtos_cmdq.resv.valid.rtos_valid = 1;
+					rtos_cmdq.resv.valid.linux_valid = 0;
+					goto send_label;
+				}
+				break;
 			case SYS_CMD_SERVO_WRITE:
                 {
                     volatile ServoCommand *shared_servo_command = (volatile ServoCommand *)CVIMMAP_SHMEM_ADDR;
@@ -337,72 +347,36 @@ void prvCmdQuRunTask(void *pvParameters)
                     goto send_label;
                 }
                 break;
-			case SYS_CMD_SERVO_READ:
-				{
-					volatile ServoCommand *shared_servo_command = (volatile ServoCommand *)CVIMMAP_SHMEM_ADDR;
-					ServoCommand local_command;
+			case SYS_CMD_GET_SERVO_INFO:
+                {
+                    volatile ServoInfoBuffer *shared_servo_data = (volatile ServoInfoBuffer *)CVIMMAP_SHMEM_ADDR;
+                    
+                    if (xSemaphoreTake(g_servo_data_mutex, portMAX_DELAY) == pdTRUE) {
+                        memcpy((void *)shared_servo_data, (void *)&g_read_servo_buffer, sizeof(g_read_servo_buffer));
+						g_read_servo_buffer.loop_count = 0; // Reset the counter after reading
+						g_read_servo_buffer.read_count = 0;
+						g_read_servo_buffer.fault_count = 0;
+						g_read_servo_buffer.last_read_time = pdTICKS_TO_MS(xTaskGetTickCount());
+                        xSemaphoreGive(g_servo_data_mutex);
+                    }
 
-					inv_dcache_range(shared_servo_command, sizeof(ServoCommand));
-					memcpy(&local_command, (void *)shared_servo_command, sizeof(ServoCommand));
+                    flush_dcache_range(shared_servo_data, sizeof(g_read_servo_buffer));
 
-					if (xSemaphoreTake(g_servo_data_mutex, portMAX_DELAY) == pdTRUE) {
-						uint8_t response[256] = {0};  // Use the full 256-byte buffer
-						int result = servo_read_command(&local_command, response, 3);
-
-						// Write the response to shared memory
-						memcpy((void *)shared_data, response, 256);
-						flush_dcache_range(shared_data, 256);
-
-						xSemaphoreGive(g_servo_data_mutex);
-					}
-
-					rtos_cmdq.cmd_id = SYS_CMD_SERVO_READ;
-					rtos_cmdq.resv.valid.rtos_valid = 1;
-					rtos_cmdq.resv.valid.linux_valid = 0;
-					goto send_label;
-				}
-				break;
-			case SYS_CMD_SERVO_READOUT_ENABLE:
-				{
-					g_servo_readout_enabled = 1;
-					rtos_cmdq.resv.valid.rtos_valid = 1;
+                    rtos_cmdq.cmd_id = SYS_CMD_GET_SERVO_READOUT;
+                    rtos_cmdq.resv.valid.rtos_valid = 1;
                     rtos_cmdq.resv.valid.linux_valid = 0;
                     goto send_label;
-				}
-				break;
-			case SYS_CMD_SERVO_READOUT_DISABLE:
+                }
+                break;
+			case SYS_CMD_SERVO_BROADCAST:
 				{
-					g_servo_readout_enabled = 0;
-					rtos_cmdq.resv.valid.rtos_valid = 1;
-                    rtos_cmdq.resv.valid.linux_valid = 0;
-                    goto send_label;
-				}
-				break;
-			case SYS_CMD_SERVO_MOVEMENT_ENABLE:
-				{
-					g_servo_movement_enabled = 1;
-					rtos_cmdq.resv.valid.rtos_valid = 1;
-					rtos_cmdq.resv.valid.linux_valid = 0;
-					goto send_label;
-				}
-				break;
-			case SYS_CMD_SERVO_MOVEMENT_DISABLE:
-				{
-					g_servo_movement_enabled = 0;
-					rtos_cmdq.resv.valid.rtos_valid = 1;
-					rtos_cmdq.resv.valid.linux_valid = 0;
-					goto send_label;
-				}
-				break;
-			case SYS_CMD_SERVO_WRITE_MULTIPLE:
-				{
-					volatile ServoMultipleWriteCommand *shared_command = (volatile ServoMultipleWriteCommand *)CVIMMAP_SHMEM_ADDR;
+					volatile BroadcastCommand *shared_command = (volatile BroadcastCommand *)CVIMMAP_SHMEM_ADDR;
 
-					inv_dcache_range(shared_command, sizeof(ServoMultipleWriteCommand));
+					inv_dcache_range(shared_command, sizeof(BroadcastCommand));
 					
 					if (xSemaphoreTake(g_servo_data_mutex, portMAX_DELAY) == pdTRUE) {
-						// Just store the command for later execution
-						memcpy((void *)&g_last_movement_command, (void *)shared_command, sizeof(ServoMultipleWriteCommand));
+						// Store the command for periodic execution
+						memcpy((void *)&g_broadcast_command, (void *)shared_command, sizeof(BroadcastCommand));
 						xSemaphoreGive(g_servo_data_mutex);
 					}
 
@@ -410,7 +384,7 @@ void prvCmdQuRunTask(void *pvParameters)
 					*(volatile int *)CVIMMAP_SHMEM_ADDR = 0;
 					flush_dcache_range(CVIMMAP_SHMEM_ADDR, 4);
 
-					rtos_cmdq.cmd_id = SYS_CMD_SERVO_WRITE_MULTIPLE;
+					rtos_cmdq.cmd_id = SYS_CMD_SERVO_BROADCAST;
 					rtos_cmdq.resv.valid.rtos_valid = 1;
 					rtos_cmdq.resv.valid.linux_valid = 0;
 					goto send_label;

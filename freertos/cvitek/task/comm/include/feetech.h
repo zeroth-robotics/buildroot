@@ -1,5 +1,5 @@
-#ifndef SERVO_DRIVER_H
-#define SERVO_DRIVER_H
+#ifndef FEETECH_H
+#define FEETECH_H
 
 #include <stdint.h>
 #include <stddef.h>
@@ -14,7 +14,6 @@
 #define SERVO_CMD_RESET 0x06
 #define SERVO_ADDR_TORQUE_SWITCH 0x28
 
-
 // Memory addresses
 #define SERVO_ADDR_TARGET_POSITION 0x2A
 #define SERVO_ADDR_CURRENT_POSITION 0x38
@@ -24,11 +23,13 @@
 #define TORQUE_OFF 0
 #define TORQUE_ON 1
 
-#define MAX_SERVO_COMMAND_DATA 256
-#define MAX_SERVOS 16
+#define MAX_SERVO_COMMAND_DATA 40
+#define MAX_SHMEM_DATA 2048
+#define MAX_SERVOS 32
 
 typedef struct {
     uint8_t id;
+    uint32_t last_read_ms;
     uint8_t torque_switch;         // 0x28 (1 byte)
     uint8_t acceleration;          // 0x29 (1 byte)
     int16_t target_location;       // 0x2A (2 bytes)
@@ -57,36 +58,29 @@ typedef struct {
 } ServoCommand;
 
 typedef struct {
-    uint8_t only_write_positions;
-    uint8_t ids[MAX_SERVOS];
-    int16_t positions[MAX_SERVOS];
-    uint16_t times[MAX_SERVOS];
-    uint16_t speeds[MAX_SERVOS];
-} ServoMultipleWriteCommand;
+    uint32_t data_length;
+    uint8_t data[MAX_SHMEM_DATA];
+} BroadcastCommand;
 
-// Function prototypes
-void servo_init(void);
-int servo_ping(uint8_t id);
+typedef struct {
+    uint32_t retry_count;
+    uint32_t read_count;
+    uint32_t loop_count;
+    uint32_t fault_count;
+    uint32_t last_read_ms;
+    ServoInfo servos[MAX_SERVOS];
+} ServoInfoBuffer;
+
+typedef struct {
+    uint32_t len;
+    uint8_t servo_id[MAX_SERVOS];
+} ActiveServoList;
+
+int servo_write(uint8_t id, uint8_t address, uint8_t *data, uint8_t length);
+int servo_sync_write(uint8_t *data, size_t size);
 int servo_read(uint8_t id, uint8_t address, uint8_t length, uint8_t *data, int retry_count);
 int servo_read_command(ServoCommand *cmd, uint8_t *data, int retry_count);
-int servo_write(uint8_t id, uint8_t address, uint8_t *data, uint8_t length);
-int servo_write_command(ServoCommand *cmd);
-int servo_reg_write(uint8_t id, uint8_t address, uint8_t *data, uint8_t length);
-int servo_action(void);
-int servo_sync_write(uint8_t *data, size_t size);
-int servo_reset(uint8_t id);
+int16_t servo_read_position_and_status(uint8_t id, ServoInfo *info, int retry_count);
+int servo_read_info(uint8_t id, ServoInfo *info, int retry_count);
 
-// New function prototypes
-int servo_move(uint8_t id, int16_t position, uint16_t time, uint16_t speed);
-int servo_move_multiple(uint8_t *ids, int16_t *positions, uint8_t count);
-int servo_move_multiple_sync(uint8_t *ids, int16_t *positions, uint16_t *times, uint16_t *speeds, uint8_t count, uint8_t only_write_positions);
-int16_t servo_read_position(uint8_t id);
-uint16_t servo_read_current(uint8_t id);
-int16_t servo_read_load(uint8_t id);
-uint8_t servo_read_voltage(uint8_t id);
-int servo_torque_on(uint8_t id);
-int servo_torque_off(uint8_t id);
-int servo_set_torque(uint8_t id, uint8_t torque_state);
-int16_t read_16bit_value(uint8_t id, uint8_t address, int retry_count);
-
-#endif // SERVO_DRIVER_H
+#endif
