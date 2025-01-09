@@ -347,7 +347,7 @@ void prvCmdQuRunTask(void *pvParameters)
                     goto send_label;
                 }
                 break;
-			case SYS_CMD_GET_SERVO_INFO:
+			case SYS_CMD_SERVO_INFO:
                 {
                     volatile ServoInfoBuffer *shared_servo_data = (volatile ServoInfoBuffer *)CVIMMAP_SHMEM_ADDR;
                     
@@ -356,13 +356,13 @@ void prvCmdQuRunTask(void *pvParameters)
 						g_read_servo_buffer.loop_count = 0; // Reset the counter after reading
 						g_read_servo_buffer.read_count = 0;
 						g_read_servo_buffer.fault_count = 0;
-						g_read_servo_buffer.last_read_time = pdTICKS_TO_MS(xTaskGetTickCount());
+						g_read_servo_buffer.last_read_ms = pdTICKS_TO_MS(xTaskGetTickCount());
                         xSemaphoreGive(g_servo_data_mutex);
                     }
 
                     flush_dcache_range(shared_servo_data, sizeof(g_read_servo_buffer));
 
-                    rtos_cmdq.cmd_id = SYS_CMD_GET_SERVO_READOUT;
+                    rtos_cmdq.cmd_id = SYS_CMD_SERVO_INFO;
                     rtos_cmdq.resv.valid.rtos_valid = 1;
                     rtos_cmdq.resv.valid.linux_valid = 0;
                     goto send_label;
