@@ -12,7 +12,6 @@ build_milkv_duo_image:
   stage: build
   only:
     - tags
-    - feetechv2
   before_script:
     - apt-get update -qq
     - ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
@@ -28,7 +27,7 @@ build_milkv_duo_image:
     # Fetch the latest successful pipeline ID from the main branch
     - >
       PIPELINE_ID=$(curl --header "PRIVATE-TOKEN: $OPENLCH_PROJECT_TOKEN" 
-      "https://gitlab.kscale.ai/api/v4/projects/$OPENLCH_PROJECT_ID/pipelines?ref=feetech-v2&status=success&order_by=id&sort=desc&per_page=1" 
+      "https://gitlab.kscale.ai/api/v4/projects/$OPENLCH_PROJECT_ID/pipelines?ref=main&status=success&order_by=id&sort=desc&per_page=1" 
       | jq '.[0].id')
 
     # Function to download artifacts for a specific job
