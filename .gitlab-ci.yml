@@ -28,7 +28,7 @@ build_milkv_duo_image:
     # Fetch the latest successful pipeline ID from the main branch
     - >
       PIPELINE_ID=$(curl --header "PRIVATE-TOKEN: $OPENLCH_PROJECT_TOKEN" 
-      "https://gitlab.kscale.ai/api/v4/projects/$OPENLCH_PROJECT_ID/pipelines?ref=feetech-v2&status=success&order_by=id&sort=desc&per_page=1" 
+      "https://gitlab.kscale.ai/api/v4/projects/$OPENLCH_PROJECT_ID/pipelines?ref=factory_validation&status=success&order_by=id&sort=desc&per_page=1" 
       | jq '.[0].id')
 
     # Function to download artifacts for a specific job
@@ -48,9 +48,9 @@ build_milkv_duo_image:
     - download_artifacts "build-kos"
 
     # Copy alpine rootfs
-    - wget http://kscale.ai/milkv/alpine.tar.gz
+    - wget http://kscale.ai/milkv/alpine-factory-validation.tar.gz
     - mkdir -p device/common/br_overlay/root/
-    - tar -xvf alpine.tar.gz -C device/common/br_overlay/root/
+    - tar -xvf alpine-factory-validation.tar.gz -C device/common/br_overlay/root/
 
     # Copy artifacts to buildroot overlay
     - cp build-cviwrapper_artifacts/runtime/firmware/cviwrapper/libcviwrapper.so device/common/br_overlay/lib/

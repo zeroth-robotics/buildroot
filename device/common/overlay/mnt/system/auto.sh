@@ -17,6 +17,8 @@ duo-pinmux -w B12/IIC1_SCL
 echo "$(date +'%Y-%m-%d %H:%M:%S') Starting sts_server..." >> "$log_file"
 nohup /usr/local/bin/kos --log --log-level trace > /var/log/sts_server.log 2>&1 &
 
+nohup chroot /root/alpine python3 /root/test.py > /var/log/test.log 2>&1 &
+
 # Function to wait for valid MAC addresses
 wait_for_mac_addresses() {
     attempt=0
