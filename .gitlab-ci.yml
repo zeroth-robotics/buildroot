@@ -42,7 +42,6 @@ build_milkv_duo_image:
 
     # Download artifacts for each job
     - download_artifacts "build-cviwrapper"
-    - download_artifacts "build-runtime"
     - download_artifacts "build-servo"
     - download_artifacts "build-efuse"
     - download_artifacts "build-kos"
