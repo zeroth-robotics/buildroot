@@ -53,11 +53,11 @@ build_milkv_duo_image:
     - tar -xvf alpine-factory-validation.tar.gz -C device/common/br_overlay/root/
 
     # Copy artifacts to buildroot overlay
-    - cp build-cviwrapper_artifacts/runtime/firmware/cviwrapper/libcviwrapper.so device/common/br_overlay/lib/
-    - cp build-servo_artifacts/runtime/firmware/feetech/libfeetech.so device/common/br_overlay/lib/
+    - cp build-cviwrapper_artifacts/kos-zbot/firmware/cviwrapper/libcviwrapper.so device/common/br_overlay/lib/
+    - cp build-servo_artifacts/kos-zbot/firmware/feetech/libfeetech.so device/common/br_overlay/lib/
     - echo "$CI_COMMIT_TAG" > device/common/br_overlay/etc/0OS-version
-    - cp build-kos_artifacts/kos/target/riscv64gc-unknown-linux-musl/release/* device/common/br_overlay/usr/local/bin/ || true
-    - cp build-efuse_artifacts/runtime/firmware/efuse/efuse_read_serial device/common/br_overlay/usr/local/bin/
+    - cp build-kos_artifacts/kos-zbot/target/riscv64gc-unknown-linux-musl/release/* device/common/br_overlay/usr/local/bin/ || true
+    - cp build-efuse_artifacts/kos-zbot/firmware/efuse/efuse_read_serial device/common/br_overlay/usr/local/bin/
     - bash ./build.sh milkv-duos-sd
     - cp $CI_PROJECT_DIR/out/*.img $CI_PROJECT_DIR/
     - cd $CI_PROJECT_DIR && tar -cvf milkv-duos-sd-${CI_COMMIT_TAG}.tar *.img && xz -z milkv-duos-sd-${CI_COMMIT_TAG}.tar
