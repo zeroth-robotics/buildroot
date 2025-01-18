@@ -13,9 +13,16 @@ mount -t devtmpfs /dev dev/
 duo-pinmux -w B11/IIC1_SDA
 duo-pinmux -w B12/IIC1_SCL
 
-# Start sts_server
-echo "$(date +'%Y-%m-%d %H:%M:%S') Starting sts_server..." >> "$log_file"
-nohup /usr/local/bin/kos --log --log-level trace > /var/log/sts_server.log 2>&1 &
+killall syslogd
+killall klogd
+
+LD_LIBRARY_PATH=/mnt/system/lib:/mnt/system/usr/lib PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin:/mnt/system/usr/bin:/mnt/system/usr/sbin nohup /usr/local/bin/cvi_camera > /var/log/cvi_camera.log 2>&1 &
+
+LD_LIBRARY_PATH=/mnt/system/lib:/mnt/system/usr/lib PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin:/mnt/system/usr/bin:/mnt/system/usr/sbin nohup /usr/local/bin/RTSPtoWeb -config /etc/rtsp2web.json > /var/log/rtsp2web.log 2>&1 &
+
+# Start kos
+echo "$(date +'%Y-%m-%d %H:%M:%S') Starting kos..." >> "$log_file"
+nohup /usr/local/bin/kos --log --log-level trace > /var/log/kos.log 2>&1 &
 
 # Function to wait for valid MAC addresses
 wait_for_mac_addresses() {
@@ -80,7 +87,7 @@ wait_and_set_mac "wlan0" "$mac2"
 # Start wpa_supplicant for wlan0 if it exists
 if ip link show wlan0 > /dev/null 2>&1; then
     echo "$(date +'%Y-%m-%d %H:%M:%S') Starting wpa_supplicant for wlan0..." >> "$log_file"
-    wpa_supplicant -B -i wlan0 -c /boot/wpa_supplicant.conf >> "$log_file" 2>&1
+    wpa_supplicant -B -i wlan0 -c /etc/wpa_supplicant_khacks.conf >> "$log_file" 2>&1
 else
     echo "$(date +'%Y-%m-%d %H:%M:%S') wlan0 interface not available, skipping wpa_supplicant" >> "$log_file"
 fi
