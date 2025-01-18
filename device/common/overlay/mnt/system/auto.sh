@@ -16,9 +16,12 @@ duo-pinmux -w B12/IIC1_SCL
 killall syslogd
 killall klogd
 
-LD_LIBRARY_PATH=/mnt/system/lib:/mnt/system/usr/lib PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin:/mnt/system/usr/bin:/mnt/system/usr/sbin nohup /usr/local/bin/cvi_camera > /var/log/cvi_camera.log 2>&1 &
+export LD_LIBRARY_PATH=/mnt/system/lib:/mnt/system/usr/lib
+export PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin:/mnt/system/usr/bin:/mnt/system/usr/sbin
 
-LD_LIBRARY_PATH=/mnt/system/lib:/mnt/system/usr/lib PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin:/mnt/system/usr/bin:/mnt/system/usr/sbin nohup /usr/local/bin/RTSPtoWeb -config /etc/rtsp2web.json > /var/log/rtsp2web.log 2>&1 &
+nohup /usr/local/bin/cvi_camera > /var/log/cvi_camera.log 2>&1 &
+
+nohup /usr/local/bin/RTSPtoWeb -config /etc/rtsp2web.json > /var/log/rtsp2web.log 2>&1 &
 
 # Start kos
 echo "$(date +'%Y-%m-%d %H:%M:%S') Starting kos..." >> "$log_file"
