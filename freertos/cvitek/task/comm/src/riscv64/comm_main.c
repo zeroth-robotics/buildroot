@@ -32,7 +32,7 @@
 #define UART2 2
 
 #ifndef pdMS_TO_TICKS
-    #define pdMS_TO_TICKS( xTimeInMs )    ( ( TickType_t ) ( ( ( uint64_t ) ( xTimeInMs ) * ( uint64_t ) configTICK_RATE_HZ ) / ( uint64_t ) 1000U ) )
+    #define pdMS_TO_TICKS( xTimeInMs )    ( ( TickType_t ) ( ( ( uint64_t ) ( xTimeInMs ) * ( uint64_t ) configTICK_RATE_HZ ) / ( uint64_t ) 1000U )
 #endif
 
 #ifndef pdTICKS_TO_MS
@@ -333,14 +333,15 @@ void prvCmdQuRunTask(void *pvParameters)
 					// printf("local_command.id: %d, address: %d, length: %d; data[0]: %d, data[1]: %d, data[2]: %d, data[3]: %d, data[4]: %d, data[5]: %d\n", local_command.id, local_command.address, local_command.length, local_command.data[0], local_command.data[1], local_command.data[2], local_command.data[3], local_command.data[4], local_command.data[5]);
 
 					if (xSemaphoreTake(g_servo_data_mutex, portMAX_DELAY) == pdTRUE) {
-						result = servo_write_command(&local_command, 5);
+						result = servo_write_command(&local_command, 10);
 						vTaskDelay(1);
 						xSemaphoreGive(g_servo_data_mutex);
 					}
 
                     // Send back the result
-                    *(volatile int *)CVIMMAP_SHMEM_ADDR = result;
-                    flush_dcache_range(CVIMMAP_SHMEM_ADDR, sizeof(int));
+                    memset((void *)shared_servo_command, 0, sizeof(ServoCommand));
+                    memcpy((void *)shared_servo_command, (void *)&result, sizeof(int));
+                    flush_dcache_range(shared_servo_command, sizeof(ServoCommand));
 
                     rtos_cmdq.cmd_id = SYS_CMD_SERVO_WRITE;
                     rtos_cmdq.resv.valid.rtos_valid = 1;
