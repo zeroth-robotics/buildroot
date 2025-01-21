@@ -334,7 +334,7 @@ void prvCmdQuRunTask(void *pvParameters)
 
 					if (xSemaphoreTake(g_servo_data_mutex, portMAX_DELAY) == pdTRUE) {
 						result = servo_write_command(&local_command, 10);
-						vTaskDelay(1);
+						// vTaskDelay(1);
 						xSemaphoreGive(g_servo_data_mutex);
 					}
 
