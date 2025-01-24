@@ -127,6 +127,7 @@ milkv-duos-emmc         cv1813h_milkv_duos_emmc
 milkv-duo-spinand       cv1800b_milkv_duo_spinand
 milkv-duo-spinor        milkv-duo-spinor
 milkv-duos-sd           cv1813h_milkv_duos_sd
+milkv-duos-ota-sd       milkv-duos-ota-sd_musl_riscv64_defconfig
 ```
 
 ```bash
