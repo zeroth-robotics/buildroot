@@ -344,3 +344,15 @@ void board_save_time_record(uintptr_t saveaddr)
 
 	mmio_write_16(saveaddr, DIV_ROUND_UP(boot_us, 1000));
 }
+
+void apply_uart_clock_settings(void)
+{
+    printf("Applying custom UART clock settings before kernel handoff...\n");
+    volatile uint32_t *reg_div_clk_cam0_200 = (volatile uint32_t *)0x030020a8;
+    *reg_div_clk_cam0_200 = 0xF0109;  // Set custom UART clock divider
+
+    volatile uint32_t *uart0_dll = (volatile uint32_t *)0x04140020;
+    *uart0_dll = 43;  // Set Divisor Latch Low
+
+    printf("UART clock settings applied successfully.\n");
+}
