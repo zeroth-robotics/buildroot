@@ -208,6 +208,11 @@ int servo_write_command(ServoCommand *cmd, int retry_count) {
         if (result == 0) {
             break;
         }
+        g_read_servo_buffer.retry_count++;
+    }
+
+    if (result != 0) {
+        g_read_servo_buffer.fault_count++;
     }
 
     return result;
