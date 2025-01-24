@@ -136,7 +136,13 @@ def gen_cvipart_h(output, parser):
             for i, p in enumerate(parts):
                 if p["label"] == "ROOTFS":
                     of.write('#define ROOTFS_DEV "/dev/mmcblk0p%d"\n' % (i+1))
-                    break
+                    print("Found ROOTFS Partition Label")
+                elif p["label"] == "RECOVERYA":
+                    of.write('#define RECOVERYA_DEV "/dev/mmcblk0p%d"\n' % (i + 1))
+                    print("Found RECOVERYA Partition Label")
+                elif p["label"] == "RECOVERYB":
+                    of.write('#define RECOVERYB_DEV "/dev/mmcblk0p%d"\n' % (i + 1))
+                    print("Found RECOVERYB Partition Label")
 
         elif parser.getStorage() == "none":
             of.write('#define PART_LAYOUT ""\n')
@@ -154,9 +160,12 @@ def gen_cvipart_h(output, parser):
                     % (parser.parts["ENV_BAK"]["offset"] * LBA_SIZE)
                 )
                 of.write("#define CONFIG_SYS_REDUNDAND_ENVIRONMENT\n")
-            of.write(
-                "#define CONFIG_ENV_SIZE 0x%X\n" % parser.parts[label]["part_size"]
-            )
+            if parser.getStorage() == "sd":
+                # Force 192KB ENV Size, requires a ENV Parition of at least 256KB (We can't scale the ENV size with partition, or else it won't fit)
+                of.write("#define CONFIG_ENV_SIZE 0x30000\n")
+            else:
+                of.write(
+                    "#define CONFIG_ENV_SIZE 0x%X\n" % parser.parts[label]["part_size"])
 
         # Generintg PART_ENV
         if parser.getStorage() == "emmc" or parser.getStorage() == "sd":
