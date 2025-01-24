@@ -56,9 +56,17 @@ int servo_write(uint8_t id, uint8_t address, uint8_t *data, uint8_t length) {
         uint8_t response[6];
         int received = receive_packet(response, sizeof(response));
         
-        if (received != 6 || response[2] != id || response[4] != 0) {
+        if (received != 6) {
             return -1;
         }
+
+        if (response[2] != id ) {
+            return -2;
+        }
+
+        // if (response[4] != 0) {
+        //     return -3;
+        // }
     }
     
     return 0;
@@ -200,6 +208,11 @@ int servo_write_command(ServoCommand *cmd, int retry_count) {
         if (result == 0) {
             break;
         }
+        g_read_servo_buffer.retry_count++;
+    }
+
+    if (result != 0) {
+        g_read_servo_buffer.fault_count++;
     }
 
     return result;

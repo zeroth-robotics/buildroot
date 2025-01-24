@@ -25,7 +25,7 @@ nohup /usr/local/bin/RTSPtoWeb -config /etc/rtsp2web.json > /var/log/rtsp2web.lo
 
 # Start kos
 echo "$(date +'%Y-%m-%d %H:%M:%S') Starting kos..." >> "$log_file"
-nohup /usr/local/bin/kos --log --log-level trace > /var/log/kos.log 2>&1 &
+ENABLE_TELEMETRY=false nohup /usr/local/bin/kos > /var/log/kos.log 2>&1 &
 
 # Function to wait for valid MAC addresses
 wait_for_mac_addresses() {
