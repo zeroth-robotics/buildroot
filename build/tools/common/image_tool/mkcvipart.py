@@ -137,12 +137,12 @@ def gen_cvipart_h(output, parser):
                 if p["label"] == "ROOTFS":
                     of.write('#define ROOTFS_DEV "/dev/mmcblk0p%d"\n' % (i+1))
                     print("Found ROOTFS Partition Label")
-                elif p["label"] == "RECOVERYA":
-                    of.write('#define RECOVERYA_DEV "/dev/mmcblk0p%d"\n' % (i + 1))
-                    print("Found RECOVERYA Partition Label")
-                elif p["label"] == "RECOVERYB":
-                    of.write('#define RECOVERYB_DEV "/dev/mmcblk0p%d"\n' % (i + 1))
-                    print("Found RECOVERYB Partition Label")
+                elif p["label"] == "OTAFS":
+                    of.write('#define OTAFS_DEV "/dev/mmcblk0p%d"\n' % (i + 1))
+                    print("Found OTAFS Partition Label")
+                elif p["label"] == "OTAFS_BAK":
+                    of.write('#define OTAFS_BAK_DEV "/dev/mmcblk0p%d"\n' % (i + 1))
+                    print("Found OTAFS_BAK Partition Label")
 
         elif parser.getStorage() == "none":
             of.write('#define PART_LAYOUT ""\n')

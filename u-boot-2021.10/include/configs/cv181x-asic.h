@@ -212,8 +212,8 @@
 		#endif /* CONFIG_SKIP_RAMDISK */
 	#elif defined(CONFIG_SD_BOOT) || defined(CONFIG_EMMC_SUPPORT)
 		#define ROOTARGS "root=" ROOTFS_DEV " rootwait rw"
-		#define RECOVERYA_ARGS "root=" RECOVERYA_DEV " rootwait rw"
-		// #define RECOVERYB_ARGS "root=" RECOVERYB_DEV " rootwait rw"
+		#define OTAFS_ARGS "root=" OTAFS_DEV " rootwait rw"
+		//#define OTAFS_BAK_ARGS "root=" OTAFS_BAK_ARGS " rootwait rw"
 	#else
 		#define ROOTARGS "rootfstype=squashfs rootwait ro root=" ROOTFS_DEV
 	#endif
@@ -253,13 +253,13 @@
 		"update_addr=" __stringify(UPDATE_ADDR) "\0" \
 		"mtdparts=" PARTS "\0" \
 		"mtdids=" MTDIDS_DEFAULT "\0" \
-		"root=" ROOTARGS "\0" \
+		"root=" OTAFS_ARGS "\0" \
 		"sdboot=" SD_BOOTM_COMMAND "\0" \
 		"othbootargs=" OTHERBOOTARGS "\0" \
 		PARTS_OFFSET \
-		"recovery_primary=" RECOVERYA_ARGS "\0" \
+		"otafs=" OTAFS_ARGS "\0" \
 		"rootfs=" ROOTARGS "\0" \
-		"next_boot=rootfs\0" \
+		"next_boot=otafs\0" \
 
 /********************************************************************************/
 	/* UBOOT_VBOOT commands */
@@ -303,15 +303,13 @@
 					"setenv first_boot 1; " \
 					"saveenv; " \
 				"fi; " \
-				"if test ${next_boot} = recovery_primary; then " \
-					"setenv root ${recovery_primary}; " \
-				"elif test ${next_boot} = recovery_backup; then " \
-					"setenv root ${recovery_backup}; " \
+				"if test ${next_boot} = otafs; then " \
+					"setenv root ${otafs}; " \
 				"elif test ${next_boot} = rootfs; then " \
 					"setenv root ${rootfs}; " \
 				"else " \
-					"echo Invalid next_boot value! Booting recovery_primary as fallback.; " \
-					"setenv root ${recovery_primary}; " \
+					"echo Invalid next_boot value! Booting otafs as fallback.; " \
+					"setenv root ${otafs}; " \
 				"fi; " \
 				"setenv bootargs ${reserved_mem} ${root} ${mtdparts} console=$consoledev,$baudrate $othbootargs; " \
 				"echo Boot from ${next_boot} ...; " \
