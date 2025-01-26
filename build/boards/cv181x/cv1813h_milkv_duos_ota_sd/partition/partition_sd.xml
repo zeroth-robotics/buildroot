@@ -1,6 +1,8 @@
 <physical_partition type="sd">
     <partition label="BOOT" size_in_kb="131072" readonly="false" file="boot.sd"/>
-    <partition label="ENV" size_in_kb="256" readonly="false" file="env.raw"/>
-    <partition label="RECOVERYA" size_in_kb="300000" readonly="false" file="rootfs.sd" />
-    <partition label="ROOTFS" size_in_kb="300000" readonly="false" file="rootfs.sd" />
+    <partition label="ENV" size_in_kb="256" readonly="false" file=""/>
+    <partition label="OTAFS" size_in_kb="100000" readonly="false" file="rootfs.sd" />
+    <partition label="ROOTFS" size_in_kb="100000" readonly="false" file="" />
+    <partition label="DATA" size_in_kb="50000" readonly="false" file=""/>
+    <partition label="STAGING" size_in_kb="125000" readonly="false" file=""/>
 </physical_partition>
