@@ -295,6 +295,7 @@
 					"console=$consoledev,$baudrate $othbootargs;"
 
 
+	// TODO: clean this up, add boot counts/limits
 	#define SD_BOOTM_COMMAND \
 				"if test -n ${first_boot}; then " \
 					"echo Environment loaded from persistent storage.; " \
@@ -305,11 +306,14 @@
 				"fi; " \
 				"if test ${next_boot} = otafs; then " \
 					"setenv root ${otafs}; " \
+					"saveenv; " \
 				"elif test ${next_boot} = rootfs; then " \
 					"setenv root ${rootfs}; " \
+					"saveenv; " \
 				"else " \
 					"echo Invalid next_boot value! Booting otafs as fallback.; " \
 					"setenv root ${otafs}; " \
+					"saveenv; " \
 				"fi; " \
 				"setenv bootargs ${reserved_mem} ${root} ${mtdparts} console=$consoledev,$baudrate $othbootargs; " \
 				"echo Boot from ${next_boot} ...; " \
