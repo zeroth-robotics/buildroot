@@ -9,6 +9,7 @@ import http.client
 import argparse
 import subprocess
 from pathlib import Path
+import requests
 
 def pretty_print(message):
     try:
@@ -67,10 +68,19 @@ def upload_file_http(file_path, host, port=10000, endpoint="/upload"):
         print(f"Error: {e}")
 
 async def connect(host, file_path):
-    url = f"ws://{host}:10000/ws"
+    #We send a single request to help swupdate initialize
+    url = f"http://{host}:10000/"
+
+    try:
+        response = requests.get(url)
+    except:
+        print(f"Failed to connect to zbot @ {host}")
+        exit(1)
+
+    ws_url = f"ws://{host}:10000/ws"
     progress_bar = None
 
-    async with websockets.connect(url) as websocket:
+    async with websockets.connect(ws_url) as websocket:
         print("connected to zbot update service")
         upload_file_http(file_path, host)
 
