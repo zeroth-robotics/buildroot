@@ -1,6 +1,5 @@
 #!/bin/sh
-
-log_file="/var/log/wpa_supplicant_start.log"
+log_file="/var/log/wpa_supplicant_start.log" 
 
 start_wpa_supplicant() {
     echo "$(date +'%Y-%m-%d %H:%M:%S') Starting wpa_supplicant script..." >> "$log_file"
