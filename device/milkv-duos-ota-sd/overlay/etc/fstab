@@ -9,3 +9,4 @@ sysfs		/sys			sysfs	defaults				0	0
 debug		/sys/kernel/debug	debugfs	defaults				0	0
 /dev/mmcblk0p1	/boot			vfat	defaults				0	0
 /dev/mmcblk0p2 /bootenv auto defaults 0 0
+/dev/mmcblk0p6 /staging auto defaults 0 0
