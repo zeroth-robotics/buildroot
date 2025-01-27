@@ -1,0 +1,49 @@
+#!/bin/sh
+
+log_file="/var/log/wpa_supplicant_start.log"
+
+start_wpa_supplicant() {
+    echo "$(date +'%Y-%m-%d %H:%M:%S') Starting wpa_supplicant script..." >> "$log_file"
+
+    # Copy the configuration file if it exists
+    if [ -f /boot/wpa_supplicant.conf ]; then
+        cp /boot/wpa_supplicant.conf /etc/wpa_supplicant.conf
+        echo "$(date +'%Y-%m-%d %H:%M:%S') Copied wpa_supplicant.conf from /boot to /etc" >> "$log_file"
+    else
+        echo "$(date +'%Y-%m-%d %H:%M:%S') No wpa_supplicant.conf found on /boot. Skipping copy." >> "$log_file"
+        exit 0
+    fi
+
+    # Wait for wlan0 to reach the DOWN state
+    echo "$(date +'%Y-%m-%d %H:%M:%S') Waiting for wlan0 to become available..." >> "$log_file"
+    while ! ip link show wlan0 | grep -q "state DOWN"; do
+        sleep 1
+    done
+    echo "$(date +'%Y-%m-%d %H:%M:%S') wlan0 is available in DOWN state. Continuing." >> "$log_file"
+
+    # Start wpa_supplicant
+    echo "$(date +'%Y-%m-%d %H:%M:%S') Starting wpa_supplicant..." >> "$log_file"
+    wpa_supplicant -B -i wlan0 -c /etc/wpa_supplicant.conf >> "$log_file" 2>&1
+    if [ $? -eq 0 ]; then
+        echo "$(date +'%Y-%m-%d %H:%M:%S') wpa_supplicant started successfully." >> "$log_file"
+    else
+        echo "$(date +'%Y-%m-%d %H:%M:%S') Failed to start wpa_supplicant." >> "$log_file"
+    fi
+}
+
+# Run the script in the background
+case "$1" in
+start)
+    ( start_wpa_supplicant ) &
+    ;;
+stop)
+    echo "$(date +'%Y-%m-%d %H:%M:%S') Stopping wpa_supplicant..." >> "$log_file"
+    killall wpa_supplicant 2>/dev/null || echo "$(date +'%Y-%m-%d %H:%M:%S') wpa_supplicant not running." >> "$log_file"
+    ;;
+*)
+    echo "Usage: $0 {start|stop}" >> "$log_file"
+    exit 1
+    ;;
+esac
+
+exit 0
