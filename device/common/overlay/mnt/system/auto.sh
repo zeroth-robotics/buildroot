@@ -88,7 +88,7 @@ wait_and_set_mac "eth0" "$mac1"
 wait_and_set_mac "wlan0" "$mac2"
 
 # Check if the custom init script exists (moved to /etc/init.d/S60wpa_supplicant)
-if [ -f /etc/init.d/S20wpa_supplicant ]; then
+if [ -f /etc/init.d/S60wpa_supplicant ]; then
     echo "$(date +'%Y-%m-%d %H:%M:%S') S60wpa_supplicant init script exists, skipping manual wpa_supplicant start..." >> "$log_file"
 else
     # Start wpa_supplicant for wlan0 if it exists
