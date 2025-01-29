@@ -4,10 +4,10 @@
 #
 ################################################################################
 
-SWUPDATE_VERSION = 2020.04
-SWUPDATE_SITE = $(call github,sbabic,swupdate,$(SWUPDATE_VERSION))
+SWUPDATE_VERSION = 2022.12
+SWUPDATE_SITE = https://github.com/sbabic/swupdate/archive/$(SWUPDATE_VERSION)
 SWUPDATE_LICENSE = GPL-2.0+ with OpenSSL exception, LGPL-2.1+, MIT
-SWUPDATE_LICENSE_FILES = Licenses/Exceptions Licenses/gpl-2.0.txt \
+#SWUPDATE_LICENSE_FILES = Licenses/Exceptions Licenses/gpl-2.0.txt \
 	Licenses/lgpl-2.1.txt Licenses/mit.txt
 
 # swupdate uses $CROSS-cc instead of $CROSS-gcc, which is not
