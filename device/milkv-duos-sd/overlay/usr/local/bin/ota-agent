@@ -1,0 +1,18 @@
+#!/bin/sh
+#hack for discovery / boot to otafs mechanism with no security
+PORT=10000
+
+while true; do
+    echo "Listening on port $PORT..."
+
+    # Handles one connection at a time, ensuring response goes back
+    echo -e "zbot" | nc -l -p "$PORT" | while read -r cmd; do
+        if [ "$cmd" = "ota" ]; then
+            /usr/bin/fw_setenv next_boot otafs; sleep 1; sync; reboot 
+        elif [ "$cmd" = "discover" ]; then
+            echo "zbot"
+        fi
+    done
+done
+
+

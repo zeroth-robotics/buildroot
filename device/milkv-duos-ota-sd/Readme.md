@@ -36,7 +36,7 @@ Add wpa_supplicant.conf to boot parition
 
 
 ------------------------------------
-Build ZBot Main OS and perform OTA
+Build ZBot Main OS and perform OTA Updates
 ------------------------------------
 ```
 source device/milkv-duos-sd/boardconfig.sh 
