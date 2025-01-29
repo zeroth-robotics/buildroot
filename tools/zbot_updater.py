@@ -1,32 +1,63 @@
 #!/usr/bin/env python3
+
 import asyncio
 import websockets
-from termcolor import colored
 import json
-from tqdm import tqdm
 import os
 import http.client
 import argparse
-import subprocess
-from pathlib import Path
+import socket
+import time
 import requests
+from tqdm import tqdm
+from termcolor import colored
 
-def print_status(message):
+
+def send_command(host, port, command):
+    """Send a command to the TCP server and return the response."""
     try:
-        #print(colored(f"{message}: ", "grey"))
-        data = json.loads(message)
-        message_type = data.get("type", "unknown")
+        with socket.create_connection((host, port), timeout=1) as sock:
+            sock.sendall(command.encode() + b"\n")
+            response = sock.recv(1024).decode().strip()
+            return response 
 
-        if message_type == "info":
-            text = data.get("source", "")
-            if "{" in text:
-                return
-            print(colored(f"{message_type}: ", "grey") + colored(text, "white"))
+    except Exception:
+        return None
 
-    except json.JSONDecodeError:
-        pass
+
+async def check_websocket(host, port):
+    """Attempt to connect to the WebSocket server with a timeout."""
+    try:
+        return await asyncio.wait_for(websockets.connect(f"ws://{host}:{port}/ws"), timeout=2)
+    except (asyncio.TimeoutError, websockets.exceptions.ConnectionClosed, OSError):
+        return False
+
+
+
+def wait_for_reboot(host, port, timeout=120):
+    """Wait for the device to reboot and start the SWUpdate WebSocket server."""
+    print(colored("waiting for zbot to reboot...", "yellow"))
+    start_time = time.time()
+
+    while time.time() - start_time < timeout:
+        try:
+            if asyncio.run(check_websocket(host, port)):  # Fix: Proper async handling
+                print(colored("zbot is back online", "green"))
+                return True
+        except RuntimeError:
+            print(colored("Async event loop error. Retrying...", "red"))
+            time.sleep(1)
+            continue  # Keep retrying
+
+        time.sleep(1)  # Retry every second
+
+    print(colored("Could not connect to zbot: timeout.", "red"))
+    return False
+
+
 
 def upload_file_http(file_path, host, port=10000, endpoint="/upload"):
+    """Upload SWU file using HTTP POST."""
     try:
         file_size = os.path.getsize(file_path)
         boundary = "----WebKitFormBoundary7MA4YWxkTrZu0gW"
@@ -59,17 +90,18 @@ def upload_file_http(file_path, host, port=10000, endpoint="/upload"):
             conn.send(body_end)
 
             bar.close()
-            print("\033[K", end="\r")  # Clear the progress bar line
+            print("\033[K", end="\r")  # Clear progress bar
 
             response = conn.getresponse()
             print(f"Response: {response.status} {response.reason}")
-            print(response.read().decode())
+            #print(response.read().decode())
             conn.close()
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error uploading file: {e}")
 
 
 async def keep_alive(websocket, interval=10):
+    """Send keep-alive pings to WebSocket server."""
     while True:
         try:
             await websocket.ping()
@@ -80,101 +112,88 @@ async def keep_alive(websocket, interval=10):
 
 
 async def connect(host, file_path):
-    #We send a single request to help swupdate initialize
-    url = f"http://{host}:10000/"
-
-    try:
-        response = requests.get(url)
-    except:
-        print(f"Failed to connect to zbot @ {host}")
-        exit(1)
-
+    """Connect to SWUpdate WebSocket and monitor update process."""
     ws_url = f"ws://{host}:10000/ws"
     progress_bar = None
 
-    async with websockets.connect(ws_url) as websocket:
-        print("connected to zbot update service")
+    try:
+        async with websockets.connect(ws_url) as websocket:
+            print(colored("connected to update service", "green"))
+            asyncio.create_task(keep_alive(websocket))
 
-        asyncio.create_task(keep_alive(websocket))
+            upload_file_http(file_path, host)
 
-        upload_file_http(file_path, host)
+            while True:
+                try:
+                    message = await websocket.recv()
+                    data = json.loads(message)
 
-        while True:
-            try:
-                message = await websocket.recv()
-                print_status(message)
-                data = json.loads(message)
+                    if data.get("type") == "step":
+                        step = int(data.get("step", 0))
+                        number = int(data.get("number", 1))
+                        percent = int(data.get("percent", 0))
+                        name = data.get("name", "Unknown")
 
-                if data.get("type") == "step":
-                    step = int(data.get("step", 0))
-                    number = int(data.get("number", 1))
-                    percent = int(data.get("percent", 0))
-                    name = data.get("name", "Unknown")
+                        if progress_bar is None:
+                            progress_bar = tqdm(
+                                total=100,
+                                desc=f"updating: {name}",
+                                ncols=80,
+                                dynamic_ncols=True,
+                                bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt}%",
+                                leave=False,
+                            )
 
-                    if progress_bar is None:
-                        progress_bar = tqdm(
-                            total=100,
-                            desc=f"Step {step}/{number}: {name}",
-                            ncols=80,
-                            dynamic_ncols=True,
-                            bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt}%",
-                            leave=False,  # Do not leave the progress bar after completion
-                        )
+                        progress_bar.n = percent
+                        progress_bar.refresh()
 
-                    progress_bar.n = percent
-                    progress_bar.refresh()
+                        if percent == 100:
+                            progress_bar.close()
+                            progress_bar = None
+                            print("\033[K", end="\r")  # Clear progress bar
 
-                    if percent == 100:
-                        progress_bar.close()
-                        progress_bar = None
-                        print("\033[K", end="\r")  # Clear the progress bar line
+                    if data.get("type") == "status":
+                        status = data.get("status")
+                        if status == "DONE":
+                            print(colored("Update complete!", "green"))
+                            exit(0)
+                        elif status == "SUCCESS":
+                            print(colored("Successfully completed.", "green"))
 
-                if data.get("type") == "status":
-                    status = data.get("status")
-                    if status == "DONE":
-                        exit(0)
-                    elif status == "SUCCESS":
-                        print(colored("Successfully completed.", "green"))
-                    elif status == "START":
-                        pass
-                    elif status == "RUN":
-                        print(colored("Writing image...", "blue"))
+                except json.JSONDecodeError:
+                    pass
+                except websockets.ConnectionClosed:
+                    print(colored("Update service connection closed.", "red"))
+                    break
+    except:
+        print(colored(f"zbot not found @ {host}", "red"))
 
-            except json.JSONDecodeError:
-                pass
-            except websockets.ConnectionClosed:
-                print("Update service connection closed.")
-                break
-
-def main():
+if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description=(
-            "zbot_updater: a tool for updating zbot firmware.\n\n"
-            "Usage examples:\n"
-            "  zbot_updater.py update 192.168.42.1 /path/to/firmware.swu\n"
-        ),
+        description="zbot_updater: a tool for updating zbot firmware.",
         formatter_class=argparse.RawTextHelpFormatter
     )
 
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    # Update command
-    update_parser = subparsers.add_parser(
-        "update", help="Upload and apply an SWU file to a zbot device."
-    )
+    update_parser = subparsers.add_parser("update", help="Upload and apply an SWU file to a zbot device.")
     update_parser.add_argument("host", help="The zbot device host (e.g., 192.168.42.1).")
     update_parser.add_argument("swu_file", help="The SWU package to upload and apply.")
 
+    args = parser.parse_args()
 
-    try:
-        args = parser.parse_args()
+    if args.command == "update":
+        host = args.host
+        swu_file = args.swu_file
 
-        if args.command == "update":
-            asyncio.run(connect(args.host, args.swu_file))
+        ota_response = send_command(host, 10000, "ota")
 
-    except SystemExit as e:
-        if e.code != 0: 
-            exit(e.code)
+        if ota_response == "zbot":
+            print(colored("zbot detected", "grey"))
+            print(colored("rebooting...", "grey"))
+            if not wait_for_reboot(host, 10000):
+                print(colored("Timeout waiting for reboot. Aborting update.", "red"))
+                exit(1)
 
-if __name__ == "__main__":
-    main()
+        asyncio.run(connect(host, swu_file))
+
