@@ -23,5 +23,5 @@ __pycache__
 
 buildroot-2021.05/buildroot-2021.05/
 buildroot-2021.05/dl/
-buildroot-2021.05/output-recovery/
 
+build.log

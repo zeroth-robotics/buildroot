@@ -11,7 +11,7 @@ import subprocess
 from pathlib import Path
 import requests
 
-def pretty_print(message):
+def print_status(message):
     try:
         #print(colored(f"{message}: ", "grey"))
         data = json.loads(message)
@@ -102,7 +102,7 @@ async def connect(host, file_path):
         while True:
             try:
                 message = await websocket.recv()
-                pretty_print(message)
+                print_status(message)
                 data = json.loads(message)
 
                 if data.get("type") == "step":
@@ -139,8 +139,6 @@ async def connect(host, file_path):
                         pass
                     elif status == "RUN":
                         print(colored("Writing image...", "blue"))
-                    else:
-                        print(colored(data.get("status"), "red"))
 
             except json.JSONDecodeError:
                 pass
@@ -148,58 +146,14 @@ async def connect(host, file_path):
                 print("Update service connection closed.")
                 break
 
-
-def handle_create_command(artifacts_path):
-    print(f"Creating SWU package from artifacts in {artifacts_path}...")
-
-    # Check if the directory exists
-    artifacts_dir = Path(artifacts_path)
-    if not artifacts_dir.is_dir():
-        print(f"Error: {artifacts_path} is not a valid directory.")
-        return
-
-    # Check for required files
-    required_files = ["sw-description"]
-    files_in_dir = {file.name for file in artifacts_dir.iterdir() if file.is_file()}
-
-    if not all(req_file in files_in_dir for req_file in required_files):
-        print("Error: Missing required files. Ensure 'sw-description' is present.")
-        return
-
-    # Get all filenames, ensuring 'sw-description' comes first
-    ordered_files = ["sw-description"] + sorted(
-        file for file in files_in_dir if file != "sw-description"
-    )
-
-    # Create the SWU package with the same name as the parent directory
-    output_file = artifacts_dir.parent / f"zbot_{artifacts_dir.name}.swu"
-    try:
-        # Change to the artifacts directory
-        os.chdir(artifacts_path)
-
-        with subprocess.Popen(
-            ["cpio", "-ov", "-H", "crc"],
-            stdin=subprocess.PIPE,
-            stdout=open(output_file, "wb")
-        ) as cpio_process:
-            for filename in ordered_files:
-                cpio_process.stdin.write(f"{filename}\n".encode())
-            cpio_process.stdin.close()
-            cpio_process.wait()
-
-        print(f"SWU package created: {output_file}")
-    except Exception as e:
-        print(f"Error creating SWU package: {e}")
-
 def main():
     parser = argparse.ArgumentParser(
         description=(
-            "zbot_updater: A tool for updating zbot firmware and creating SWU firmware packages.\n\n"
+            "zbot_updater: a tool for updating zbot firmware.\n\n"
             "Usage examples:\n"
             "  zbot_updater.py update 192.168.42.1 /path/to/firmware.swu\n"
-            "  zbot_updater.py create /path/to/swu_artifacts\n"
         ),
-        formatter_class=argparse.RawTextHelpFormatter  # Preserve newlines in help text
+        formatter_class=argparse.RawTextHelpFormatter
     )
 
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -211,21 +165,13 @@ def main():
     update_parser.add_argument("host", help="The zbot device host (e.g., 192.168.42.1).")
     update_parser.add_argument("swu_file", help="The SWU package to upload and apply.")
 
-    # Create command
-    create_parser = subparsers.add_parser(
-        "create", help="Create an SWU package from artifacts."
-    )
-    create_parser.add_argument(
-        "artifacts_path", help="Path to the directory containing SWU artifacts."
-    )
 
     try:
         args = parser.parse_args()
 
         if args.command == "update":
             asyncio.run(connect(args.host, args.swu_file))
-        elif args.command == "create":
-            handle_create_command(args.artifacts_path)
+
     except SystemExit as e:
         if e.code != 0: 
             exit(e.code)
