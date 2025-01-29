@@ -86,16 +86,3 @@ wait_and_set_mac "eth0" "$mac1"
 
 # Wait for wlan0 and set its MAC address
 wait_and_set_mac "wlan0" "$mac2"
-
-# Check if the custom init script exists (moved to /etc/init.d/S60wpa_supplicant)
-if [ -f /etc/init.d/S60wpa_supplicant ]; then
-    echo "$(date +'%Y-%m-%d %H:%M:%S') S60wpa_supplicant init script exists, skipping manual wpa_supplicant start..." >> "$log_file"
-else
-    # Start wpa_supplicant for wlan0 if it exists
-    if ip link show wlan0 > /dev/null 2>&1; then
-        echo "$(date +'%Y-%m-%d %H:%M:%S') Starting wpa_supplicant for wlan0..." >> "$log_file"
-        wpa_supplicant -i wlan0 -c /etc/wpa_supplicant_lab.conf >> "$log_file" 2>&1 &
-    else
-        echo "$(date +'%Y-%m-%d %H:%M:%S') wlan0 interface not available, skipping wpa_supplicant" >> "$log_file"
-    fi
-fi
