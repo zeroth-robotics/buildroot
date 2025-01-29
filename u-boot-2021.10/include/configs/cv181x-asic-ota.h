@@ -212,6 +212,8 @@
 		#endif /* CONFIG_SKIP_RAMDISK */
 	#elif defined(CONFIG_SD_BOOT) || defined(CONFIG_EMMC_SUPPORT)
 		#define ROOTARGS "root=" ROOTFS_DEV " rootwait rw"
+		#define OTAFS_ARGS "root=" OTAFS_DEV " rootwait rw"
+		//#define OTAFS_BAK_ARGS "root=" OTAFS_BAK_ARGS " rootwait rw"
 	#else
 		#define ROOTARGS "rootfstype=squashfs rootwait ro root=" ROOTFS_DEV
 	#endif
@@ -251,10 +253,13 @@
 		"update_addr=" __stringify(UPDATE_ADDR) "\0" \
 		"mtdparts=" PARTS "\0" \
 		"mtdids=" MTDIDS_DEFAULT "\0" \
-		"root=" ROOTARGS "\0" \
+		"root=" OTAFS_ARGS "\0" \
 		"sdboot=" SD_BOOTM_COMMAND "\0" \
 		"othbootargs=" OTHERBOOTARGS "\0" \
-		PARTS_OFFSET
+		PARTS_OFFSET \
+		"otafs=" OTAFS_ARGS "\0" \
+		"rootfs=" ROOTARGS "\0" \
+		"next_boot=otafs\0" \
 
 /********************************************************************************/
 	/* UBOOT_VBOOT commands */
@@ -289,13 +294,33 @@
 	#define SET_BOOTARGS "setenv bootargs ${reserved_mem} ${root} ${mtdparts} " \
 					"console=$consoledev,$baudrate $othbootargs;"
 
+
+	// TODO: clean this up, add boot counts/limits
 	#define SD_BOOTM_COMMAND \
-				SET_BOOTARGS \
-				"echo Boot from SD ...;" \
+				"if test -n ${first_boot}; then " \
+					"echo Environment loaded from persistent storage.; " \
+				"else " \
+					"echo First boot detected. Initializing environment variables...; " \
+					"setenv first_boot 1; " \
+					"saveenv; " \
+				"fi; " \
+				"if test ${next_boot} = otafs; then " \
+					"setenv root ${otafs}; " \
+					"saveenv; " \
+				"elif test ${next_boot} = rootfs; then " \
+					"setenv root ${rootfs}; " \
+					"saveenv; " \
+				"else " \
+					"echo Invalid next_boot value! Booting otafs as fallback.; " \
+					"setenv root ${otafs}; " \
+					"saveenv; " \
+				"fi; " \
+				"setenv bootargs ${reserved_mem} ${root} ${mtdparts} console=$consoledev,$baudrate $othbootargs; " \
+				"echo Boot from ${next_boot} ...; " \
 				"mmc dev 0 && fatload mmc 0 ${uImage_addr} boot.sd; " \
 				"if test $? -eq 0; then " \
-				UBOOT_VBOOT_BOOTM_COMMAND \
-				"fi;"
+					UBOOT_VBOOT_BOOTM_COMMAND \
+				"fi;" \
 
 	#ifndef CONFIG_SD_BOOT
 		#ifdef CONFIG_ENABLE_ALIOS_UPDATE
