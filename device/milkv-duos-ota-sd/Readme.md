@@ -6,23 +6,25 @@ source device/milkv-duos-ota-sd/boardconfig.sh
 source build/milkvsetup-ota.sh 
 defconfig cv1813h_milkv_duos_ota_sd
 clean_all
-
-# run mkcvipary manually **FIXME** (automate this)
-python build/tools/common/image_tool/mkcvipart.py  build/boards/cv181x/cv1813h_milkv_duos_ota_sd/partition/partition_sd.xml u-boot-2021.10/include
-
 build_all
 
+# generate three blank ext4 filesystems
+------
+dd if=/dev/zero of=install/soc_cv1813h_milkv_duos_ota_sd/env.ext4 bs=1k count=256
+mkfs.ext4 install/soc_cv1813h_milkv_duos_ota_sd/env.ext4 
 
-# **FIXME**  (automate this)
-# generate two blank ext4 filesystems (so we don't have to format on target)
 dd if=/dev/zero of=install/soc_cv1813h_milkv_duos_ota_sd/placeholder_staging.ext4 bs=1k count=300000
 mkfs.ext4 install/soc_cv1813h_milkv_duos_ota_sd/placeholder_staging.ext4 
 
 dd if=/dev/zero of=install/soc_cv1813h_milkv_duos_ota_sd/placeholder_data.ext4 bs=1k count=50000
 mkfs.ext4 install/soc_cv1813h_milkv_duos_ota_sd/placeholder_data.ext4 
 
+# should now have the following:
+./install/soc_cv1813h_milkv_duos_ota_sd/env.ext4
+./install/soc_cv1813h_milkv_duos_ota_sd/placeholder_staging.ext
 ./install/soc_cv1813h_milkv_duos_ota_sd/placeholder_data.ext4
 ./install/soc_cv1813h_milkv_duos_ota_sd/placeholder_staging.ext4
+----
 
 # generate the sd image file
 pack_sd_image_gz
