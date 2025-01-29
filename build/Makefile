@@ -639,6 +639,33 @@ else
 	$(COMMON_TOOLS_PATH)/sd_tools/sd_gen_burn_image.sh $(OUTPUT_DIR)
 endif
 
+sd_image_gz:
+	$(call print_target)
+	-${Q}rm  $(OUTPUT_DIR)/fs
+ifeq ($(CONFIG_BUILDROOT_FS),y)
+	${Q}rm $(OUTPUT_DIR)/br-rootfs -rf
+	${Q}ln -s $(OUTPUT_DIR)/br-rootfs $(OUTPUT_DIR)/fs
+	${Q}mkdir $(OUTPUT_DIR)/br-rootfs
+	${Q}tar xvf $(BR_DIR)/output/$(BR_BOARD)/images/rootfs.tar.xz -C $(OUTPUT_DIR)/br-rootfs
+else
+	${Q}ln -s $(OUTPUT_DIR)/rootfs $(OUTPUT_DIR)/fs
+endif
+ifeq ($(MV_VENDOR), milkv)
+	$(TOP_DIR)/device/gen_burn_image_sd.sh $(OUTPUT_DIR)
+else
+	$(COMMON_TOOLS_PATH)/sd_tools/sd_gen_burn_image.sh $(OUTPUT_DIR)
+endif
+	${Q}if [ -f "$(OUTPUT_DIR)/$(MV_BOARD).img" ]; then \
+		gzip -f $(OUTPUT_DIR)/$(MV_BOARD).img; \
+	fi
+
+
+gen_swu_ota:
+	$(call print_target)
+	@echo "Generating SWU package..."
+	@$(TOP_DIR)/device/gen_swu.sh $(OUTPUT_DIR)/rootfs.ext4 $(SWU_VERSION)
+
+
 jffs2:
 	$(call print_target)
 ifeq ($(STORAGE_TYPE),spinor)

@@ -1,0 +1,33 @@
+#!/bin/sh
+#
+# SWUpdate Service
+case "$1" in
+    start)
+        # Ensure /staging is mounted before starting (max wait: 10 seconds)
+        TIMEOUT=10
+        COUNT=0
+        echo "Waiting for /staging to be mounted."
+        while ! mountpoint -q /staging && [ "$COUNT" -lt "$TIMEOUT" ]; do
+                echo "Waiting for /staging to be mounted... ($COUNT sec)"
+                sleep 1
+                COUNT=$((COUNT + 1))
+        done
+        sleep 2
+        echo "Starting SWUpdate Web Server..."
+        TMPDIR="/staging" /usr/bin/swupdate -w "--document-root /var/www/swupdate --port 10000" &
+        ;;
+    stop)
+        echo "Stopping SWUpdate Web Server..."
+        killall swupdate
+        ;;
+    restart)
+        $0 stop
+        $0 start
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+        ;;
+esac
+
+exit 0

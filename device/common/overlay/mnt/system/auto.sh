@@ -78,7 +78,7 @@ wait_and_set_mac() {
 # Wait for valid MAC addresses
 if ! wait_for_mac_addresses; then
     echo "$(date +'%Y-%m-%d %H:%M:%S') Failed to obtain valid MAC addresses, exiting" >> "$log_file"
-    exit 1
+    #exit 1
 fi
 
 # Wait for eth0 and set its MAC address
@@ -86,11 +86,3 @@ wait_and_set_mac "eth0" "$mac1"
 
 # Wait for wlan0 and set its MAC address
 wait_and_set_mac "wlan0" "$mac2"
-
-# Start wpa_supplicant for wlan0 if it exists
-if ip link show wlan0 > /dev/null 2>&1; then
-    echo "$(date +'%Y-%m-%d %H:%M:%S') Starting wpa_supplicant for wlan0..." >> "$log_file"
-    wpa_supplicant -B -i wlan0 -c /etc/wpa_supplicant_khacks.conf >> "$log_file" 2>&1
-else
-    echo "$(date +'%Y-%m-%d %H:%M:%S') wlan0 interface not available, skipping wpa_supplicant" >> "$log_file"
-fi

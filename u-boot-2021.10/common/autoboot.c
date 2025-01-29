@@ -52,6 +52,11 @@ static int menukey;
 #define AUTOBOOT_MENUKEY 0
 #endif
 
+__weak void apply_uart_clock_settings(void)
+{
+    // Default: Do nothing for other boards
+}
+
 /**
  * passwd_abort_crypt() - check for a crypt-style hashed key sequence to abort booting
  *
@@ -480,6 +485,19 @@ void autoboot_command(const char *s)
 		 (stored_bootdelay != -1 && !abortboot(stored_bootdelay)))) {
 		bool lock;
 		int prev;
+
+		//// Call the milkv duos UART clock configuration
+        apply_uart_clock_settings();
+
+		//// Apply custom UART clock settings
+		//printf("Applying custom UART clock settings before kernel handoff...\n");
+		//volatile uint32_t *reg_div_clk_cam0_200 = (volatile uint32_t *)0x030020a8;
+		//*reg_div_clk_cam0_200 = 0xF0109;  // Set custom UART clock divider
+
+		//volatile uint32_t *uart0_dll = (volatile uint32_t *)0x04140020;
+		//*uart0_dll = 43;  // Set Divisor Latch Low
+
+		//printf("UART clock settings applied successfully.\n");
 
 		lock = autoboot_keyed() &&
 			!IS_ENABLED(CONFIG_AUTOBOOT_KEYED_CTRLC);
