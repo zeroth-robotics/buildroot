@@ -21,13 +21,12 @@ mkfs.ext4 install/soc_cv1813h_milkv_duos_ota_sd/placeholder_data.ext4
 
 # should now have the following:
 ./install/soc_cv1813h_milkv_duos_ota_sd/env.ext4
-./install/soc_cv1813h_milkv_duos_ota_sd/placeholder_staging.ext
 ./install/soc_cv1813h_milkv_duos_ota_sd/placeholder_data.ext4
 ./install/soc_cv1813h_milkv_duos_ota_sd/placeholder_staging.ext4
 ----
 
 # generate the sd image file
-pack_sd_image_gz
+pack_sd_image
 
 # alternatively generate compressed image file for distribution
 pack_sd_image_gz
@@ -48,7 +47,7 @@ clean_all
 build_all
 pack_sd_image
 gen_swu_ota <version>
-tools/zbot_updater.py update 192.168.42.1 install/board/zbot.swu
+tools/zbot_updater.py update 192.168.42.1 install/<board>/zbot.swu
 ```
 
 
@@ -96,7 +95,7 @@ OTA Updater
 tools/zbot_updater.py update <host> <swu file>
 ```
 
-SWUpdate Backend
+SWUpdate Backend (Updated to v2022.12)
 - listens on port 10000 (via websocket and http)
 - stages firmware, writes raw image to partition, writes files, updates microcontrollers
 - handles hw compatibility, sw version rules, hash validation and compressed images.
