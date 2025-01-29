@@ -659,6 +659,13 @@ endif
 		gzip -f $(OUTPUT_DIR)/$(MV_BOARD).img; \
 	fi
 
+
+gen_swu_ota:
+	$(call print_target)
+	@echo "Generating SWU package..."
+	@$(TOP_DIR)/device/gen_swu.sh $(OUTPUT_DIR)/rootfs.ext4 $(SWU_VERSION)
+
+
 jffs2:
 	$(call print_target)
 ifeq ($(STORAGE_TYPE),spinor)

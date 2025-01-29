@@ -9,6 +9,9 @@
 # pack_system -> system.emmc / system.spinand (3rd/sdk shared libraries, spinand-ubifs/ emmc-ext4)
 # pack_gpt -> gpt.img (emmc only)
 # pack_cfg -> cfg.emmc / cfg.spinand (cofigs partition for saving configs and isp pq bin)
+# pack_sd_image -> create sd card image
+# pack_sd_image_gz -> create and compress sd card image
+# gen_swu_ota  -> creates ota update SWU file
 #
 function print_error()
 {
@@ -258,6 +261,20 @@ function pack_sd_image_gz
   make sd_image_gz || return "$?"
   popd
 )}
+
+function gen_swu_ota {
+  local version="$1"  # Capture the first argument as version
+  if [ -z "$version" ]; then
+    echo "Usage: gen_swu_ota <version>"
+    return 1
+  fi
+
+  (
+    pushd "$BUILD_PATH" || return 1
+    make gen_swu_ota SWU_VERSION=$version || return "$?"
+    popd
+  )
+}
 
 function pack_prog_img
 {(
