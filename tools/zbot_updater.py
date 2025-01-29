@@ -17,12 +17,12 @@ def pretty_print(message):
         data = json.loads(message)
         message_type = data.get("type", "unknown")
 
-        if message_type == "message":
-            text = data.get("text", "")
-            if "[network_initializer]" in text:
+        if message_type == "info":
+            text = data.get("source", "")
+            if "{" in text:
                 return
+            print(colored(f"{message_type}: ", "grey") + colored(text, "white"))
 
-            print(colored(f"{message_type}: ", "grey") + colored(text, "green"))
     except json.JSONDecodeError:
         pass
 
@@ -138,7 +138,7 @@ async def connect(host, file_path):
                     elif status == "START":
                         pass
                     elif status == "RUN":
-                        pass
+                        print(colored("Writing image...", "blue"))
                     else:
                         print(colored(data.get("status"), "red"))
 
@@ -148,14 +148,6 @@ async def connect(host, file_path):
                 print("Update service connection closed.")
                 break
 
-def handle_status(status):
-    if status == "SUCCESS":
-        print(colored("Update completed successfully!", "green"))
-        exit(0)
-    elif status == "DONE":
-        print(colored("All tasks completed.", "blue"))
-    else:
-        print(colored(f"Status: {status}", "yellow"))
 
 def handle_create_command(artifacts_path):
     print(f"Creating SWU package from artifacts in {artifacts_path}...")
