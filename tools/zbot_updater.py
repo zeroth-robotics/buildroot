@@ -13,6 +13,7 @@ import requests
 
 def pretty_print(message):
     try:
+        #print(colored(f"{message}: ", "grey"))
         data = json.loads(message)
         message_type = data.get("type", "unknown")
 
@@ -67,6 +68,17 @@ def upload_file_http(file_path, host, port=10000, endpoint="/upload"):
     except Exception as e:
         print(f"Error: {e}")
 
+
+async def keep_alive(websocket, interval=10):
+    while True:
+        try:
+            await websocket.ping()
+            await asyncio.sleep(interval)
+        except websockets.ConnectionClosed:
+            print("WebSocket connection closed during keep-alive.")
+            break
+
+
 async def connect(host, file_path):
     #We send a single request to help swupdate initialize
     url = f"http://{host}:10000/"
@@ -82,6 +94,9 @@ async def connect(host, file_path):
 
     async with websockets.connect(ws_url) as websocket:
         print("connected to zbot update service")
+
+        asyncio.create_task(keep_alive(websocket))
+
         upload_file_http(file_path, host)
 
         while True:
