@@ -252,6 +252,13 @@ function pack_sd_image
   popd
 )}
 
+function pack_sd_image_gz
+{(
+  pushd "$BUILD_PATH"
+  make sd_image_gz || return "$?"
+  popd
+)}
+
 function pack_prog_img
 {(
   local tmp_dir
